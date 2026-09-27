@@ -776,11 +776,13 @@ function downloadBackup(){
 function restoreDialog(){
   modal({title:"שחזור מגיבוי", okText:"שחזור", danger:true,
     html:`<p class="muted">השחזור מחליף את <b>כל</b> הנתונים שבטלפון בנתונים מהקובץ. אי אפשר לבטל.</p>
-          <div class="field"><label>קובץ גיבוי (.json)</label><input type="file" id="rs-file" accept=".json,application/json"></div>`,
+          <div class="field"><label>קובץ גיבוי</label><input type="file" id="rs-file"></div>
+          <div class="field"><label>או הדבקת הטקסט של הגיבוי</label><textarea id="rs-text" rows="4" dir="ltr" placeholder="{&quot;format&quot;: &quot;kitchen-scheduler-phone&quot;, ..." style="width:100%;font:inherit;font-size:.85rem;border:1px solid var(--line);border-radius:6px;padding:6px"></textarea>
+            <span class="hint">אם הטלפון לא מצליח לבחור את הקובץ: לפתוח את הקובץ במחשב בפנקס רשימות, להעתיק הכול, לשלוח לעצמך בוואטסאפ, ולהדביק כאן.</span></div>`,
     onOk: async () => {
-      const f = $("#rs-file").files[0];
-      if (!f) throw new Error("לא נבחר קובץ");
-      let data; try { data = JSON.parse(await f.text()); } catch(e){ throw new Error("הקובץ לא תקין"); }
+      const f = $("#rs-file").files[0], pasted = $("#rs-text").value.trim();
+      if (!f && !pasted) throw new Error("לא נבחר קובץ ולא הודבק טקסט");
+      let data; try { data = JSON.parse(pasted || await f.text()); } catch(e){ throw new Error(pasted ? "הטקסט שהודבק לא שלם או לא תקין" : "הקובץ לא תקין"); }
       if (!Store.isBackup(data)){
         if (data && data.format === "kitchen-scheduler") throw new Error('זה קובץ ייצוא של מסעדה אחת. אותו מייבאים עם "ייבוא מקובץ".');
         throw new Error("הקובץ הזה לא נראה כמו גיבוי של סידור העבודה");
@@ -809,7 +811,7 @@ function duplicateDialog(){
 }
 function importDialog(){
   modal({title:"ייבוא מקובץ", okText:"ייבוא",
-    html:`<div class="field"><label>קובץ ייצוא (.json)</label><input type="file" id="imp-file" accept=".json,application/json"></div>
+    html:`<div class="field"><label>קובץ ייצוא (.json)</label><input type="file" id="imp-file"></div>
           <div class="field"><label>שם למסעדה (ריק = השם מהקובץ)</label><input type="text" id="imp-name"></div>
           <label class="row"><input type="checkbox" id="imp-emps"> לייבא גם את הטבחים</label>
           <label class="row"><input type="checkbox" id="imp-dates"> לייבא גם חריגים לפי תאריך</label>`,

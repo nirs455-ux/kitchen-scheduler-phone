@@ -1,4 +1,4 @@
-const CACHE_NAME = "kitchen-scheduler-v3";
+const CACHE_NAME = "kitchen-scheduler-v4";
 const ASSETS = [
     "./",
     "./index.html",
