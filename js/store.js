@@ -2,7 +2,8 @@
 // ונשמרות כמסמך אחד ב-IndexedDB בתוך הטלפון. אין שרת ואין סנכרון עם המחשב (ראה גיבוי/ייבוא).
 const Store = (() => {
   const TABLES = ["restaurants", "stations", "day_plans", "requirements", "employees",
-                  "employee_stations", "availability", "schedule_weeks", "schedule_seats"];
+                  "employee_stations", "availability", "schedule_weeks", "schedule_seats",
+                  "week_subs", "week_avail"];   // זמינות מיוחדת לשבוע מסוים (עוקפת את הזמינות הקבועה)
   const BACKUP_FORMAT = "kitchen-scheduler-phone";
   const IDB_NAME = "kitchen-scheduler", IDB_STORE = "kv", IDB_KEY = "db";
 

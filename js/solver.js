@@ -9,6 +9,7 @@
 //   -5 לכל דקה של פער בשעות לשבוע עבודה (4 שבועות אחרונים, בלי שבועות שהטבח לא עבד בהם),
 //   +30 לכל שעה שהסוגר הגיע אחרי תחילת היום (מי שמגיע מאוחר סוגר יותר - השעות שלו ממילא פחותות),
 //   -50 על עמדה משנית, -20 לפער במשמרות, ורק כשובר שוויון: -15 על סגירה מעבר לחלק ההוגן, -5 לפער בסגירות.
+// במצב פלור (ctx.floor) כל חלקי האיזון כבויים: לא "כל אחד סוגר", לא שעות, לא משמרות ולא סגירות.
 // שינויים לעומת המחשב: איזון שעות על 4 שבועות, איזון סגירות חלש ועדיפות חזקה יותר למאחרים.
 const Solver = (() => {
   const toMin = t => { const [h, m] = t.split(":"); return +h * 60 + +m; };
@@ -80,6 +81,8 @@ const Solver = (() => {
       cap[k] = max === null || max === undefined ? Infinity : Math.max(0, max - fixedCount[k]);
     });
     const cleanup = ctx.cleanup;
+    // פלור: בלי איזון שעות, משמרות וסגירות - כל אחד עובד לפי מה שנתן, והמערכת בוחרת מבין הזמינים
+    const bal = ctx.floor ? 0 : 1;
     // היסטוריה: דקות ומספר שבועות עבודה ב-3 השבועות הקודמים (שבוע בלי משמרות = חופש, לא נספר)
     const hist = ctx.history || new Map();
     const baseMin = emps.map(e => (hist.get(e.id) || {}).minutes || 0);
@@ -102,7 +105,7 @@ const Solver = (() => {
           mask[k] |= 1 << dayIdx[i];
         }
       }
-      let once = 0, maxH = 0, minH = 1e9, maxS = 0, minS = 20, maxC = 0, minC = 20, pen = 0;
+      let once = 0, maxH = 0, minH = 1e9, maxS = 0, minS = 20, maxC = 0, minC = 20, pen = 0, fairPen = 0;
       for (let k = 0; k < E; k++) {
         const avg = (baseMin[k] + hours[k]) / (baseWeeks[k] + 1);
         if (avg > maxH) maxH = avg;
@@ -115,12 +118,13 @@ const Solver = (() => {
         if (inMinH[k] && avg < minH) minH = avg;
         if (hasW[k]) {
           if (closes[k]) once++;
-          pen += 15 * Math.max(0, closes[k] - fair) + 1500 * Math.max(0, wk[k] - 1) + 1200 * popcount(mask[k] & (mask[k] >> 1));
+          fairPen += 15 * Math.max(0, closes[k] - fair);
+          pen += 1500 * Math.max(0, wk[k] - 1) + 1200 * popcount(mask[k] & (mask[k] >> 1));
         }
       }
       if (minH === 1e9) minH = maxH;
-      return 100000 * filled + 10000 * closed + 2000 * once - 5 * (maxH - minH) - pen - 5 * (maxC - minC)
-        + 30 * late - 50 * sec - 20 * (maxS - minS);
+      return 100000 * filled + 10000 * closed + bal * (2000 * once - 5 * (maxH - minH) - fairPen - 5 * (maxC - minC)
+        - 20 * (maxS - minS)) - pen + 30 * late - 50 * sec;
     }
     return {n, E, emps, eIdx, fx, isFixed, cand, candSet, conf, gkey, canClose, groups, hoursLate, cap, score};
   }
