@@ -335,7 +335,7 @@ function setupView(){
       <button class="btn" onclick="importDialog()">ייבוא מקובץ</button>
       <button class="btn" onclick="restoreDialog()">שחזור מגיבוי</button>
     </div>
-    <p class="hint">כל הנתונים נשמרים רק בטלפון הזה. כדי להתחיל מהנתונים שבמחשב: להריץ שם <b dir="ltr">python export_to_phone.py</b> ולבחור כאן "שחזור מגיבוי".</p></div>`;
+    <p class="hint">כל הנתונים נשמרים רק בטלפון הזה. "שחזור מגיבוי" מחזיר נתונים מקובץ גיבוי שהורדת בעבר מהאפליקציה.</p></div>`;
 }
 function createFirst(){
   act(() => api("POST","/api/restaurants",{name:$("#sname").value, slot_minutes:+$("#sslot").value}), "המסעדה נוצרה");
@@ -758,7 +758,7 @@ function restaurantView(){
       <button class="btn primary" onclick="downloadBackup()">הורדת גיבוי</button>
       <button class="btn" onclick="restoreDialog()">שחזור מגיבוי</button>
     </div>
-    <p class="hint">להעברת הנתונים מהמחשב: להריץ שם <b dir="ltr">python export_to_phone.py</b> ולשחזר כאן את הקובץ שנוצר. אפשר גם לייבא מסעדה אחת בעזרת "ייבוא מקובץ" עם קובץ ייצוא מהמחשב.</p></div>
+    <p class="hint">כדאי לשמור את קובץ הגיבוי מחוץ לטלפון, למשל במייל, כדי שאפשר יהיה לשחזר אותו אם הטלפון מתחלף.</p></div>
   <div class="panel"><h2>מחיקת המסעדה</h2>
     <p class="muted">מוחק את כל ההגדרות של "${esc(r.name)}". כדאי לייצא קובץ לפני כן.</p>
     <button class="btn danger" onclick="delRestaurant()">מחיקת המסעדה</button></div>`;
@@ -779,7 +779,7 @@ function restoreDialog(url){
           <div class="field"><label>קישור לגיבוי</label><input type="text" id="rs-url" dir="ltr" placeholder="https://..." value="${esc(url||"")}"></div>
           <div class="field"><label>או קובץ גיבוי</label><input type="file" id="rs-file"></div>
           <div class="field"><label>או הדבקת הטקסט של הגיבוי</label><textarea id="rs-text" rows="4" dir="ltr" placeholder="{&quot;format&quot;: &quot;kitchen-scheduler-phone&quot;, ..." style="width:100%;font:inherit;font-size:.85rem;border:1px solid var(--line);border-radius:6px;padding:6px"></textarea>
-            <span class="hint">אם הטלפון לא מצליח לבחור את הקובץ: לפתוח את הקובץ במחשב בפנקס רשימות, להעתיק הכול, לשלוח לעצמך בוואטסאפ, ולהדביק כאן.</span></div>`,
+            <span class="hint">אם הטלפון לא מצליח לבחור את הקובץ, אפשר להדביק כאן את התוכן שלו.</span></div>`,
     onOk: async () => {
       const f = $("#rs-file").files[0], pasted = $("#rs-text").value.trim(), link = $("#rs-url").value.trim();
       if (!f && !pasted && !link) throw new Error("לא הוזן קישור, לא נבחר קובץ ולא הודבק טקסט");
