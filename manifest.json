@@ -1,0 +1,17 @@
+{
+  "name": "סידור עבודה למטבח",
+  "short_name": "סידור עבודה",
+  "description": "סידור עבודה שבועי למטבח - גרסת טלפון עצמאית (בלי שרת)",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E4E9EC",
+  "theme_color": "#24333A",
+  "dir": "rtl",
+  "lang": "he",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

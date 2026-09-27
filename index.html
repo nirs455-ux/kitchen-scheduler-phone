@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<!-- Copyright (c) 2026 nirs455-ux. All rights reserved. Proprietary - do not copy or re-implement without written permission. -->
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>סידור עבודה למטבח</title>
+<meta name="theme-color" content="#24333A">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="סידור עבודה">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Secular+One&display=swap" rel="stylesheet">
+<style>
+:root{
+  --steel:#E4E9EC; --panel:#FFFFFF; --ink:#18252B; --muted:#5E6D74; --line:#CBD4D9;
+  --rail:#24333A; --accent:#1E5AA8; --accent-soft:#E3ECF7; --warn:#9A6212; --warn-soft:#FBF1DF;
+  --danger:#B3261E; --danger-soft:#FBE7E5; --ok:#2E6B4A;
+  --head:"Secular One", "Assistant", Arial, sans-serif;
+  --body:"Assistant", Arial, sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--steel);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--head);font-weight:400;margin:0;line-height:1.2}
+
+/* rail */
+.rail{background:var(--rail);color:#fff;padding:14px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.rail h1{font-size:1.45rem}
+.rail .spacer{flex:1}
+.rail select{background:#34464F;border:1px solid #4B5F69;color:#fff;border-radius:6px;padding:6px 10px;min-width:180px}
+.tabs{display:flex;gap:2px;background:var(--rail);padding:0 16px;overflow-x:auto}
+.tabs button{background:none;border:0;color:#B9C6CC;padding:10px 16px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;font-weight:600}
+.tabs button.on{color:#fff;border-bottom-color:#7FB0EE}
+main{max-width:1240px;margin:0 auto;padding:22px 16px 60px}
+.intro{color:var(--muted);max-width:70ch;margin:0 0 18px}
+
+/* generic */
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:600}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger{color:var(--danger)}
+.btn.danger:hover{border-color:var(--danger)}
+.btn.small{padding:3px 9px;font-size:.9rem}
+.icon{border:0;background:none;cursor:pointer;padding:4px 7px;border-radius:5px;color:var(--muted)}
+.icon:hover{background:var(--steel);color:var(--ink)}
+.icon.danger:hover{color:var(--danger);background:var(--danger-soft)}
+input[type=text],input[type=number],input[type=time],input[type=date],select{border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:#fff}
+input[type=number]{width:64px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
+.panel+.panel{margin-top:16px}
+.panel h2{font-size:1.2rem;margin-bottom:10px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:.9rem;color:var(--muted);font-weight:600}
+.muted{color:var(--muted)}
+.hint{color:var(--muted);font-size:.9rem}
+.empty{padding:28px;text-align:center;color:var(--muted);border:2px dashed var(--line);border-radius:10px}
+
+/* stations */
+.st-list{list-style:none;margin:0 0 14px;padding:0}
+.st-list li{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--steel)}
+.st-list li.inactive .st-name{color:var(--muted);text-decoration:line-through}
+.swatch{width:26px;height:26px;border-radius:6px;border:1px solid rgba(0,0,0,.15);padding:0;cursor:pointer}
+input[type=color].swatch{background:none}
+.st-name{flex:1;font-weight:600}
+
+/* day tickets: the kitchen order-ticket look is the one bold element */
+.tickets{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:18px;align-items:start}
+.ticket{background:var(--panel);border-radius:4px;position:relative;padding:22px 16px 14px;box-shadow:0 1px 0 var(--line)}
+.ticket::before{content:"";position:absolute;inset:0 0 auto 0;height:9px;
+  background:radial-gradient(circle at 7px -1px, var(--steel) 6px, transparent 6.5px) 0 0/14px 9px repeat-x}
+.ticket.closed{background:repeating-linear-gradient(135deg,#F3F5F6 0 10px,#ECEFF1 10px 20px)}
+.t-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.t-title{flex:1;min-width:0}
+.t-title h3{font-size:1.35rem}
+.t-title .sub{color:var(--muted);font-size:.9rem}
+.t-title input{font-family:var(--head);font-size:1.1rem;width:100%}
+.hours{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 0;border-bottom:1px dashed var(--line);margin-bottom:6px}
+.tag{font-size:.8rem;background:var(--accent-soft);color:var(--accent);border-radius:4px;padding:1px 6px;font-weight:700}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.reqs{display:flex;flex-direction:column;gap:6px}
+.req{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-inline-start:5px solid var(--c,#999);padding-inline-start:8px}
+.req .r-st{min-width:0;max-width:140px;font-weight:600}
+.req input[type=number]{width:54px}
+.req .x{margin-inline-start:auto}
+select.tsel{width:78px;padding-inline:4px;direction:ltr;text-align:center}
+.req-warn{flex-basis:100%;display:flex;gap:6px}
+.req .r-close{font-weight:600}
+.wins{display:flex;flex-direction:column;gap:6px}
+.win{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.blk-label{color:var(--muted);font-weight:600;font-size:.9rem;margin:10px 0 6px}
+.t-foot{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;padding-top:8px;border-top:1px dashed var(--line)}
+.t-foot .sum{margin-inline-start:auto;color:var(--muted);font-size:.9rem}
+.closed-note{color:var(--muted);padding:10px 0}
+
+/* switch */
+.switch{display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-weight:600;font-size:.9rem}
+.switch input{appearance:none;width:38px;height:22px;border-radius:11px;background:#B8C3C8;position:relative;cursor:pointer;margin:0;transition:background .15s}
+.switch input::after{content:"";position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:right .15s}
+.switch input:checked{background:var(--ok)}
+.switch input:checked::after{right:19px}
+
+/* holidays */
+.hol{display:grid;grid-template-columns:110px 70px 1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--steel)}
+.hol .k{font-size:.8rem;color:var(--muted)}
+.done{color:var(--ok);font-weight:700;font-size:.9rem}
+details summary{cursor:pointer;color:var(--muted);font-weight:600;margin:14px 0 10px}
+.section-title{display:flex;align-items:baseline;gap:12px;margin:26px 0 12px}
+.section-title h2{font-size:1.3rem}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:rgba(24,37,43,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:var(--panel);border-radius:10px;width:min(460px,100%);padding:20px;max-height:90vh;overflow:auto}
+.modal h3{font-size:1.25rem;margin-bottom:12px}
+.modal .actions{display:flex;gap:8px;justify-content:flex-start;margin-top:18px}
+.modal .field{margin-bottom:10px}
+.checks{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.checks label{display:flex;gap:5px;align-items:center}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--rail);color:#fff;padding:10px 18px;border-radius:8px;z-index:60;max-width:90vw}
+.toast.err{background:var(--danger)}
+
+/* employees */
+.emps{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:18px;align-items:start}
+.emp{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.emp.inactive{opacity:.6}
+.emp-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.emp-head h3{flex:1;font-size:1.35rem}
+.emp h4{font-size:.95rem;color:var(--muted);margin:12px 0 6px;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:2px solid var(--c);background:#fff;color:var(--ink);border-radius:999px;padding:3px 12px;cursor:pointer;font-weight:600;font-size:.92rem}
+.chip.none{border-color:var(--line);color:var(--muted);border-style:dashed}
+.chip.secondary{background:color-mix(in srgb, var(--c) 18%, #fff)}
+.chip.primary{background:var(--c);color:#fff}
+.limits{display:flex;flex-wrap:wrap;gap:10px 16px}
+.limits label{display:flex;align-items:center;gap:6px;font-size:.95rem}
+.avail{display:flex;flex-direction:column}
+.av{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--steel);min-height:40px}
+.av .d{width:52px;font-weight:700}
+.av.off .d{color:var(--muted)}
+.av .off-txt{color:var(--muted);font-size:.92rem}
+
+/* schedule */
+.weeknav{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.weeknav h2{font-size:1.5rem;min-width:170px;text-align:center}
+.weeknav .grow{flex:1}
+.stat{font-size:1.05rem;margin:0 0 14px}
+.stat b.bad{color:var(--danger)}
+.stat b.good{color:var(--ok)}
+.missing{border-inline-start:5px solid var(--warn);background:var(--warn-soft)}
+.missing li{margin:6px 0}
+.sched{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;align-items:start}
+.sday{background:var(--panel);border-radius:4px;padding:18px 12px 12px;position:relative}
+.sday::before{content:"";position:absolute;inset:0 0 auto 0;height:9px;
+  background:radial-gradient(circle at 7px -1px, var(--steel) 6px, transparent 6.5px) 0 0/14px 9px repeat-x}
+.sday.closed{background:repeating-linear-gradient(135deg,#F3F5F6 0 10px,#ECEFF1 10px 20px)}
+.sday h3{font-size:1.25rem}
+.sday .sub{color:var(--muted);font-size:.9rem;margin-bottom:8px}
+.seat{display:flex;width:100%;align-items:center;gap:8px;text-align:start;background:#fff;border:1px solid var(--line);
+  border-inline-start:5px solid var(--c);border-radius:5px;padding:6px 8px;margin-top:6px;cursor:pointer}
+.seat:hover{border-color:var(--accent);border-inline-start-color:var(--c)}
+.seat .st{font-weight:700;min-width:58px}
+.seat .tm{color:var(--muted);font-size:.88rem;direction:ltr}
+.seat .who{margin-inline-start:auto;font-weight:700}
+.seat.hole{background:var(--danger-soft);border-color:#E9B4AF}
+.seat.hole .who{color:var(--danger)}
+.seat .man{font-size:.75rem;color:var(--muted);font-weight:600}
+.need{color:var(--muted);font-size:.95rem}
+.sumtab{width:100%;border-collapse:collapse}
+.sumtab th,.sumtab td{text-align:start;padding:6px 8px;border-bottom:1px solid var(--steel)}
+.sumtab th{color:var(--muted);font-weight:600;font-size:.9rem}
+.sumtab td.over{color:var(--danger);font-weight:700}
+.cand{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--steel)}
+.cand .info{flex:1}
+.cand .nm{font-weight:700}
+.cand .meta{color:var(--muted);font-size:.88rem}
+.cand .iss{color:var(--danger);font-size:.9rem}
+.cand .ok{color:var(--ok);font-size:.9rem;font-weight:600}
+.cand.cur{background:var(--accent-soft);padding-inline:8px;border-radius:6px}
+
+/* tracking */
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi .v{font-family:var(--head);font-size:1.7rem;line-height:1.1}
+.kpi .l{color:var(--muted);font-size:.9rem}
+.bars{display:flex;flex-direction:column;gap:6px}
+.bar{display:grid;grid-template-columns:90px 1fr 60px;gap:8px;align-items:center}
+.bar .track{background:var(--steel);border-radius:4px;height:16px;overflow:hidden}
+.bar .fill{background:var(--accent);height:100%}
+.bar .n{font-weight:700;direction:ltr;text-align:end}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.two{grid-template-columns:1fr}}
+
+/* setup */
+.setup{max-width:520px;margin:50px auto}
+.setup h2{font-size:1.7rem;margin-bottom:6px}
+
+@media (max-width:560px){
+  .tickets{grid-template-columns:1fr}
+  .rail select{min-width:0;max-width:60vw}
+  .ticket{padding-inline:12px}
+  .hol{grid-template-columns:90px 1fr auto}
+  .hol .k{display:none}
+  .checks{grid-template-columns:repeat(2,1fr)}
+  .emps{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="js/store.js"></script>
+<script src="js/holidays.js"></script>
+<script src="js/solver.js"></script>
+<script src="js/api.js"></script>
+<script>
+const WD = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+const LEVELS = {none:"לא עובד בה", secondary:"משנית", primary:"ראשית"};
+const PALETTE = ["#1E5AA8","#2E6B4A","#9A6212","#8E3B7A","#B3261E","#3F7F8F","#6B5B2E","#4B4FA0"];
+let S = null;
+let TAB = "schedule";
+try { TAB = localStorage.getItem("sched_tab") || "schedule"; } catch(e) {}
+
+/* ---------- utils ---------- */
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const toMin = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
+const spanMin = (a,b) => { let d = toMin(b)-toMin(a); if (d <= 0) d += 1440; return d; };
+const crosses = (a,b) => a && b && toMin(b) <= toMin(a);
+const fmtH = m => { const h = m/60; return Number.isInteger(h) ? String(h) : h.toFixed(1); };
+function fmtDate(iso){ const [y,m,d] = iso.split("-"); return `${d}/${m}/${y}`; }
+function timeOptions(sel){
+  const step = (S && S.restaurant) ? S.restaurant.slot_minutes : 30;
+  const list = [];
+  for (let m = 0; m < 1440; m += step) list.push(String(Math.floor(m/60)).padStart(2,"0") + ":" + String(m%60).padStart(2,"0"));
+  if (sel && !list.includes(sel)) { list.push(sel); list.sort(); }
+  return list.map(t => `<option value="${t}" ${t===sel?"selected":""}>${t}</option>`).join("");
+}
+function timeSel(value, cls, onchange, label){
+  return `<select class="tsel ${cls}" aria-label="${label||"שעה"}" ${onchange?`onchange="${onchange}"`:""}>${timeOptions(value)}</select>`;
+}
+function wdOf(iso){ const [y,m,d] = iso.split("-").map(Number); return new Date(y,m-1,d).getDay(); }
+
+// גרסת הטלפון: אין שרת, "השרת" רץ בתוך הדף (js/api.js) והנתונים נשמרים בטלפון
+function api(method, url, body){ return LocalApi.call(method, url, body); }
+function downloadJson(data, filename){
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const stamp = () => new Date().toISOString().slice(0,10).replace(/-/g, "");
+async function load(){ S = await api("GET", "/api/state"); if (TAB === "schedule") SCH = null; render(); }
+async function act(fn, okMsg){
+  try { await fn(); await load(); if (okMsg) toast(okMsg); }
+  catch(e){ toast(e.message, true); await load(); }
+}
+let toastTimer;
+function toast(msg, err){
+  document.querySelectorAll(".toast").forEach(t => t.remove());
+  const t = document.createElement("div");
+  t.className = "toast" + (err ? " err" : ""); t.textContent = msg; t.setAttribute("role","status");
+  document.body.appendChild(t);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), err ? 4500 : 2200);
+}
+
+/* ---------- modal ---------- */
+function modal({title, html, okText="שמירה", danger=false, onOk, noOk=false}){
+  const ov = document.createElement("div");
+  ov.className = "overlay";
+  ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><div class="m-body">${html||""}</div>
+    <div class="actions">${noOk?"":`<button class="btn ${danger?"danger":"primary"}" data-ok>${esc(okText)}</button>`}<button class="btn" data-cancel>${noOk?"סגירה":"ביטול"}</button></div></div>`;
+  const close = () => { ov.remove(); document.removeEventListener("keydown", onKey); };
+  const ok = async () => {
+    try { const res = await onOk(ov); if (res !== false) close(); }
+    catch(e){ toast(e.message, true); }
+  };
+  const onKey = e => { if (e.key === "Escape") close(); if (!noOk && e.key === "Enter" && e.target.tagName !== "TEXTAREA") ok(); };
+  if (!noOk) ov.querySelector("[data-ok]").onclick = ok;
+  ov.closeModal = close;
+  ov.querySelector("[data-cancel]").onclick = close;
+  ov.onclick = e => { if (e.target === ov) close(); };
+  document.addEventListener("keydown", onKey);
+  document.body.appendChild(ov);
+  const first = ov.querySelector("input,select,button"); if (first) first.focus();
+  return ov;
+}
+function confirmBox(title, text, okText="מחיקה"){
+  return new Promise(res => {
+    const ov = modal({title, html:`<p>${esc(text)}</p>`, okText, danger:true, onOk:() => res(true)});
+    ov.querySelector("[data-cancel]").addEventListener("click", () => res(false));
+  });
+}
+const slotOptions = sel => [15,30,60].map(v => `<option value="${v}" ${v==sel?"selected":""}>${v} דקות</option>`).join("");
+
+/* ---------- render ---------- */
+function render(){
+  const app = $("#app");
+  if (!S.restaurant){ app.innerHTML = setupView(); return; }
+  const holN = openHolidays(S.today, addDays(S.today, 30)).length;
+  const tabs = [["schedule","סידור"],["stats","מעקב"],["week","בניית טמפלט לסידור"],["employees","טבחים"],["dates", holN ? `חגים וחריגים (${holN})` : "חגים וחריגים"],["stations","עמדות"],["restaurant","מסעדה"]];
+  const y = window.scrollY;
+  app.innerHTML = `
+    <header class="rail">
+      <h1>סידור עבודה</h1>
+      <span class="spacer"></span>
+      <label class="row" style="gap:8px"><span class="muted" style="color:#B9C6CC">מסעדה</span>
+        <select onchange="switchRestaurant(this.value)">
+          ${S.restaurants.map(r => `<option value="${r.id}" ${r.id===S.restaurant.id?"selected":""}>${esc(r.name)}</option>`).join("")}
+          <option value="new">+ מסעדה חדשה…</option>
+        </select>
+      </label>
+    </header>
+    <nav class="tabs" role="tablist">${tabs.map(([k,l]) => `<button role="tab" class="${TAB===k?"on":""}" aria-selected="${TAB===k}" onclick="setTab('${k}')">${l}</button>`).join("")}</nav>
+    <main>${({schedule:scheduleView, stats:statsView, stations:stationsView, employees:employeesView, week:weekView, dates:datesView, restaurant:restaurantView}[TAB] || stationsView)()}</main>`;
+  window.scrollTo(0, y);
+}
+function setTab(k){ TAB = k; if (k === "schedule") SCH = null; if (k === "stats") STATS = null; try { localStorage.setItem("sched_tab", k); } catch(e) {} window.scrollTo(0,0); render(); }
+
+/* ---------- setup (no restaurant yet) ---------- */
+function setupView(){
+  return `<div class="setup panel">
+    <h2>מתחילים</h2>
+    <p class="muted">הגדר את המסעדה. אחר כך תוסיף עמדות ותגדיר כמה טבחים צריך בכל יום. כל ההגדרות ניתנות לשינוי בכל שלב.</p>
+    <div class="field"><label for="sname">שם המסעדה</label><input type="text" id="sname" placeholder="לדוגמה: המסעדה בנמל"></div>
+    <div class="field"><label for="sslot">יחידת זמן לשיבוץ</label><select id="sslot">${slotOptions(30)}</select>
+      <span class="hint">הדיוק שבו המערכת תשבץ שעות. 30 דקות מתאים לרוב המטבחים.</span></div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn primary" onclick="createFirst()">יצירת מסעדה</button>
+      <button class="btn" onclick="importDialog()">ייבוא מקובץ</button>
+      <button class="btn" onclick="restoreDialog()">שחזור מגיבוי</button>
+    </div>
+    <p class="hint">כל הנתונים נשמרים רק בטלפון הזה. כדי להתחיל מהנתונים שבמחשב: להריץ שם <b dir="ltr">python export_to_phone.py</b> ולבחור כאן "שחזור מגיבוי".</p></div>`;
+}
+function createFirst(){
+  act(() => api("POST","/api/restaurants",{name:$("#sname").value, slot_minutes:+$("#sslot").value}), "המסעדה נוצרה");
+}
+function switchRestaurant(v){
+  if (v === "new"){ render(); newRestaurantDialog(); return; }
+  act(() => api("POST", `/api/restaurants/${v}/activate`));
+}
+function newRestaurantDialog(){
+  modal({title:"מסעדה חדשה", okText:"יצירה",
+    html:`<div class="field"><label>שם המסעדה</label><input type="text" id="nr-name"></div>
+          <div class="field"><label>יחידת זמן לשיבוץ</label><select id="nr-slot">${slotOptions(30)}</select></div>
+          <p class="hint">מסעדה חדשה מתחילה ריקה. כדי להתחיל מההגדרות של המסעדה הנוכחית, השתמש ב"שכפול" בלשונית "מסעדה".</p>`,
+    onOk: async () => { await api("POST","/api/restaurants",{name:$("#nr-name").value, slot_minutes:+$("#nr-slot").value}); setTab("stations"); await load(); toast("המסעדה נוצרה"); }});
+}
+
+/* ---------- day ticket ---------- */
+function ticket(p, o){
+  const active = S.stations.filter(s => s.is_active);
+  const wins = p.windows || [];
+  let people = 0;
+  const closers = p.closers || 0;
+  const rows = p.requirements.map(q => {
+    people += q.count;
+    const stSel = (active.length || q.station_id) ? `<select class="r-st" aria-label="עמדה" onchange="saveReq(${q.id})">
+        <option value="">כל עמדה</option>
+        ${S.stations.filter(s => s.is_active || s.id === q.station_id).map(s => `<option value="${s.id}" ${s.id===q.station_id?"selected":""}>${esc(s.name)}</option>`).join("")}
+      </select>` : "";
+    return `<div class="req" data-req="${q.id}" style="--c:${esc(q.station_color || "#8A969C")}">
+      <input type="number" class="r-n" aria-label="כמה טבחים" min="1" max="50" value="${q.count}" onchange="saveReq(${q.id})">
+      <span>${q.count>1?"טבחים":"טבח"} מ-</span>${timeSel(q.start_time,"r-s",`saveReq(${q.id})`,"משעה")}
+      <span>עד</span>${timeSel(q.end_time || defaultEnd(p, q.start_time),"r-e",`saveReq(${q.id})`,"עד שעה")}
+      ${stSel}
+      <button class="icon danger x" title="מחיקת שורה" aria-label="מחיקת שורה" onclick="delReq(${q.id})">✕</button></div>`;
+  }).join("");
+  const winHtml = wins.map((w,i) => `<div class="win">
+      ${timeSel(w[0],"w-a",`saveWindows(${p.id})`,"פתיחה")}<span>עד</span>${timeSel(w[1],"w-z",`saveWindows(${p.id})`,"סגירה")}
+      ${wins.length>1?`<button class="icon danger" aria-label="מחיקת חלון" onclick="delWindow(${p.id},${i})">✕</button>`:""}</div>`).join("");
+  return `<article class="ticket ${p.is_open?"":"closed"}" data-plan="${p.id}">
+    <div class="t-head">
+      <div class="t-title">${o.title}</div>
+      <label class="switch"><input type="checkbox" ${p.is_open?"checked":""} onchange="setOpen(${p.id},this.checked)"><span>${p.is_open?"פתוח":"סגור"}</span></label>
+    </div>
+    ${p.is_open ? `
+      <div class="blk-label">שעות פעילות</div>
+      <div class="wins">${winHtml}</div>
+      <div class="row" style="margin:6px 0 4px"><button class="btn small" onclick="addWindow(${p.id})">+ עוד חלון</button></div>
+      <div class="win" style="margin-top:6px"><span>כמה סוגרים:</span>
+        <input type="number" aria-label="כמה טבחים סוגרים" min="0" max="50" value="${closers}" onchange="saveClosers(${p.id},this.value)"></div>
+      <div class="blk-label">מי מגיע ומתי</div>
+      ${p.requirements.length ? `<div class="reqs">${rows}</div>` : `<p class="closed-note">עוד לא הוגדר מי מגיע ביום הזה.</p>`}
+      <div class="row" style="margin-top:6px"><button class="btn small" onclick="addReq(${p.id})">+ הוספת הגעה</button></div>`
+      : `<p class="closed-note">המסעדה סגורה ביום הזה.</p>`}
+    <div class="t-foot">${o.actions}${p.is_open && people ? `<span class="sum">${people} טבחים, ${closers} סוגרים</span>`:""}</div>
+  </article>`;
+}
+
+/* ---------- week ---------- */
+function weekView(){
+  return `<p class="intro">לכל יום: שעות הפעילות, כמה סוגרים בסוף היום, ומי מגיע ומתי. הסוגרים נבחרים אוטומטית מבין מי שעובד עד הסגירה, עם עדיפות למי שהגיע מאוחר, וכל טבח סוגר לפחות פעם בשבוע. עמדה היא אופציונלית. ימים עם שעות אחרות (חגים, אירועים) מגדירים בלשונית "חגים וחריגים".</p>
+  <div class="tickets">${S.weekdays.map(p => ticket(p, {
+    title:`<h3>${WD[p.weekday]}</h3>`,
+    actions:`<button class="btn small" onclick="copyDialog(${p.id},${p.weekday})">העתקה לימים אחרים</button>
+             <button class="btn small" onclick="presetDialog(${p.id})">שמירה כתבנית</button>`
+  })).join("")}</div>`;
+}
+
+/* ---------- dates & holidays ---------- */
+function datesView(){
+  const future = S.dates.filter(p => p.plan_date >= S.today);
+  const past = S.dates.filter(p => p.plan_date < S.today).reverse();
+  const dateTicket = p => ticket(p, {
+    title:`<div class="sub">${WD[wdOf(p.plan_date)]}, ${fmtDate(p.plan_date)}</div>
+           <input type="text" aria-label="שם החריג" placeholder="שם (לא חובה)" value="${esc(p.name||"")}" onchange="renamePlan(${p.id},this.value)">`,
+    actions:`${S.presets.length?`<button class="btn small" onclick="applyPresetDialog(${p.id})">החלת תבנית</button>`:""}
+             <button class="btn small" onclick="presetDialog(${p.id})">שמירה כתבנית</button>
+             <button class="btn small danger" onclick="delPlan(${p.id},'החריג')">מחיקה</button>`
+  });
+  let hol = "";
+  if (S.holidays === null){
+    hol = `<p class="hint">הדפדפן הזה לא תומך בלוח העברי, אז החגים לא מופיעים אוטומטית. אפשר להוסיף חריג לכל תאריך ידנית.</p>`;
+  } else if (S.holidays.length){
+    hol = S.holidays.map((h,i) => `<div class="hol"><span>${WD[wdOf(h.date)]} ${fmtDate(h.date).slice(0,5)}</span><span class="k">${h.kind}</span><b>${esc(h.name)}</b>
+      ${h.has_plan?`<span class="done">מוגדר</span>`:`<button class="btn small" onclick="holDialog(${i})">הגדרה</button>`}</div>`).join("");
+  } else hol = `<p class="hint">אין חגים בחודשיים הקרובים.</p>`;
+
+  return `<p class="intro">חריג מחליף את היום הרגיל בתאריך מסוים: חג, ערב חג, אירוע או סגירה. חריג חדש מתחיל כהעתק של היום הרגיל, ומשנים בו רק את מה שצריך.</p>
+  <div class="panel"><h2>חגים קרובים</h2>${hol}</div>
+  <div class="section-title"><h2>חריגים</h2><button class="btn primary" onclick="dateDialog()">+ חריג לתאריך</button></div>
+  ${future.length ? `<div class="tickets">${future.map(dateTicket).join("")}</div>` : `<div class="empty">אין חריגים קרובים.</div>`}
+  ${past.length ? `<details><summary>חריגים שעברו (${past.length})</summary><div class="tickets">${past.map(dateTicket).join("")}</div></details>`:""}
+  <div class="section-title"><h2>תבניות שמורות</h2><span class="hint">נשמרות מכל יום עם "שמירה כתבנית", למשל "ערב חג" או "יום אירוע".</span></div>
+  ${S.presets.length ? `<div class="tickets">${S.presets.map(p => ticket(p, {
+      title:`<input type="text" aria-label="שם התבנית" value="${esc(p.name||"")}" onchange="renamePlan(${p.id},this.value)">`,
+      actions:`<button class="btn small danger" onclick="delPlan(${p.id},'התבנית')">מחיקה</button>`
+    })).join("")}</div>` : `<div class="empty">עוד אין תבניות.</div>`}`;
+}
+
+/* ---------- schedule ---------- */
+// חגים וערבי חג בטווח שעוד אין להם חריג (תזכורת בסידור ובלשונית החגים)
+function openHolidays(from, to){
+  return (S.holidays || []).filter(h => !h.has_plan && h.date >= from && h.date <= to);
+}
+let SCH = null;
+function sundayOf(d){ const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - x.getDay()); return x; }
+function isoOf(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+let WEEK = isoOf(sundayOf(new Date()));
+function addDays(iso, n){ const [y,m,d] = iso.split("-").map(Number); const x = new Date(y,m-1,d); x.setDate(x.getDate()+n); return isoOf(x); }
+async function loadSchedule(){
+  try { SCH = await api("GET", `/api/schedule?week_start=${WEEK}`); } catch(e){ toast(e.message, true); return; }
+  if (TAB === "schedule") render();
+}
+function shiftWeek(n){ WEEK = addDays(WEEK, n); SCH = null; render(); }
+function scheduleView(){
+  if (!SCH || SCH.week_start !== WEEK){ loadSchedule(); return `<p class="muted">טוען…</p>`; }
+  const r = SCH.ready;
+  const blockers = [], warns = [];
+  if (!r.employees) blockers.push(["אין טבחים", "employees", "להוספת טבחים"]);
+  if (!r.needed) blockers.push(["לא הוגדר מי מגיע ומתי בימים של השבוע הזה", "week", "לבניית הטמפלט"]);
+  if (r.employees && r.with_availability < r.employees) warns.push([`${r.employees - r.with_availability} טבחים בלי שעות זמינות, הם לא ישובצו`, "employees", "לטבחים"]);
+  const list = (items) => `<ul>${items.map(([t,tab,btn]) => `<li>${t} <button class="btn small" onclick="setTab('${tab}')">${btn}</button></li>`).join("")}</ul>`;
+  const end = addDays(WEEK, 6);
+  const nav = `<div class="weeknav">
+      <button class="btn" onclick="shiftWeek(-7)">שבוע קודם</button>
+      <h2>${fmtDate(WEEK).slice(0,5)} עד ${fmtDate(end).slice(0,5)}</h2>
+      <button class="btn" onclick="shiftWeek(7)">שבוע הבא</button>
+      <span class="grow"></span>
+      ${SCH.built ? `<button class="btn" onclick="sendWhatsapp()">שליחה בוואטסאפ</button>` : ""}
+      <button class="btn primary" ${blockers.length?"disabled":""} onclick="buildDialog()">${SCH.built ? "בנייה מחדש" : "בניית סידור"}</button>
+    </div>`;
+  let head = "";
+  if (blockers.length) head += `<div class="panel missing"><h2>כדי לבנות סידור חסר:</h2>${list(blockers)}</div>`;
+  if (warns.length) head += `<div class="panel missing"><h2>שים לב</h2>${list(warns)}</div>`;
+  const hols = openHolidays(WEEK, addDays(WEEK, 6));
+  if (hols.length) head += `<div class="panel missing"><h2>חגים בשבוע הזה שלא הוגדרו</h2>
+    <p class="hint">בלי הגדרה, ימים אלה ישובצו כמו יום רגיל. אפשר להגדיר חריג (סגור, שעות אחרות או תבנית) לפני בניית הסידור.</p>
+    <ul>${hols.map(h => `<li>${WD[wdOf(h.date)]} ${fmtDate(h.date).slice(0,5)}: <b>${esc(h.name)}</b> <span class="hint">(${h.kind})</span>
+      <button class="btn small" onclick="holDialog(${S.holidays.indexOf(h)})">הגדרה</button></li>`).join("")}</ul></div>`;
+  if (head) head = `<div style="margin-bottom:16px">${head}</div>`;
+
+  let stat = "";
+  if (SCH.built){
+    const holes = SCH.seats.filter(q => !q.employee_id).length, total = SCH.seats.length;
+    stat = `<p class="stat">${total - holes} מתוך ${total} משמרות מאוישות. ${holes
+      ? `<b class="bad">${holes} חסרות</b>, לחיצה על משמרת אדומה מראה מי יכול להשלים.`
+      : `<b class="good">הסידור מלא.</b>`} לחיצה על כל משמרת מאפשרת להחליף טבח.</p>`;
+  } else if (!blockers.length){
+    stat = `<p class="stat">הסידור לשבוע הזה עוד לא נבנה. לחיצה על "בניית סידור" תשבץ את הטבחים לפי העמדות והשעות שלהם.</p>`;
+  }
+
+  const days = SCH.days.map(d => {
+    const title = `<h3>${WD[d.weekday]}</h3><div class="sub">${fmtDate(d.date).slice(0,5)}${d.is_exception?` <span class="tag">${esc(d.name||"חריג")}</span>`:""}${d.is_open?` <span dir="ltr">${d.windows.map(w => w[0] + "-" + w[1]).join(", ")}</span>`:""}</div>`;
+    if (!d.is_open) return `<div class="sday closed">${title}<p class="need">סגור</p></div>`;
+    const seats = SCH.seats.filter(q => q.plan_date === d.date);
+    let body;
+    if (SCH.built) body = seats.length ? seats.map(q => `<button class="seat ${q.employee_id?"":"hole"}" style="--c:${esc(q.station_color || "#8A969C")}" onclick="seatDialog(${q.id})">
+        <span class="tm">${shiftLabel(q)}</span>${q.station_name?`<span class="st">${esc(q.station_name)}</span>`:""}${q.end_time?`<span class="tag">סוגר ${q.end_time}</span>`:""}
+        <span class="who">${q.employee_id ? esc(q.employee_name) : "חסר"}</span>${q.is_manual?`<span class="man">ידני</span>`:""}${q.actual_start?`<span class="man" title="שעות בפועל">✓ ${q.actual_start}-${q.actual_end}</span>`:""}</button>`).join("")
+        : `<p class="need">אין משמרות ביום הזה.</p>`;
+    else body = `<p class="need">${d.needed ? `צריך ${d.needed} טבחים` : "לא הוגדר מי מגיע"}</p>`;
+    return `<div class="sday">${title}${body}</div>`;
+  }).join("");
+
+  const sum = SCH.built && SCH.summary.length ? `<div class="panel" style="margin-top:18px"><h2>סיכום לפי טבח</h2>
+    <table class="sumtab"><thead><tr><th>טבח</th><th>משמרות</th><th>שעות</th><th>סגירות</th></tr></thead><tbody>
+    ${SCH.summary.map(e => `<tr><td>${esc(e.name)}</td>
+      <td class="${e.max_shifts!=null && e.shifts>e.max_shifts?"over":""}">${e.shifts}${e.max_shifts!=null?` מתוך ${e.max_shifts}`:""}</td>
+      <td>${e.hours}</td><td>${e.closings}</td></tr>`).join("")}
+    </tbody></table></div>` : "";
+  return nav + head + stat + `<div class="sched">${days}</div>` + sum;
+}
+function buildDialog(){
+  const doBuild = async (keep) => {
+    toast("בונה סידור…");
+    SCH = await api("POST", "/api/schedule/build", {week_start:WEEK, keep_manual:keep});
+    render();
+    const holes = SCH.seats.filter(q => !q.employee_id).length;
+    toast(holes ? `הסידור נבנה. ${holes} משמרות חסרות` : "הסידור נבנה ומלא");
+  };
+  if (!SCH.built){ doBuild(true).catch(e => toast(e.message, true)); return; }
+  const hasManual = SCH.seats.some(q => q.is_manual);
+  modal({title:"בנייה מחדש", okText:"בנייה מחדש",
+    html:`<p class="muted">הסידור של השבוע ייבנה מחדש לפי ההגדרות העדכניות.</p>
+      ${hasManual?`<label class="row"><input type="checkbox" id="keep-man" checked> לשמור את השיבוצים שעשיתי ידנית</label>`:""}`,
+    onOk: async () => { await doBuild(hasManual ? $("#keep-man").checked : true); }});
+}
+async function seatDialog(id){
+  let data;
+  try { data = await api("GET", `/api/schedule/seats/${id}/candidates`); } catch(e){ toast(e.message, true); return; }
+  const q = data.seat;
+  const rows = data.candidates.map(c => `<div class="cand ${c.current?"cur":""}">
+      <div class="info"><div class="nm">${esc(c.name)} ${c.level==="primary"?'<span class="tag">ראשית</span>':c.level==="secondary"?'<span class="tag">משנית</span>':""}</div>
+        <div class="meta">השבוע: ${c.shifts} משמרות, ${c.hours} שעות, ${c.closings} סגירות</div>
+        ${c.issues.length ? c.issues.map(t => `<div class="iss">${esc(t)}</div>`).join("") : `<div class="ok">מתאים</div>`}</div>
+      ${c.current ? `<span class="done">משובץ</span>` : `<button class="btn small ${c.issues.length?"":"primary"}" onclick="assignSeat(${id},${c.id})">שיבוץ</button>`}
+    </div>`).join("");
+  const ov = modal({title:`${WD[wdOf(q.plan_date)]} ${fmtDate(q.plan_date).slice(0,5)}, ${shiftLabel(q)}${q.end_time?`, סוגר ${q.end_time}`:""}${q.station_id?`, ${q.station_name}`:""}`, noOk:true,
+    html:`<div class="row" style="margin-bottom:8px">
+        ${q.employee_id ? `<button class="btn small danger" onclick="assignSeat(${id},null)">הסרת השיבוץ</button>` : ""}
+        <button class="btn small" onclick="toggleClosing(${id},${q.end_time?"false":"true"})">${q.end_time?"לא סוגר":"סמן כסוגר"}</button></div>
+      ${q.employee_id ? `<div class="panel" style="padding:10px;margin-bottom:10px"><div class="blk-label" style="margin-top:0">שעות בפועל (לא חובה, למעקב)</div>
+        <div class="row">${timeSel(q.actual_start || q.start_time, "a-s", null, "התחיל")}<span>עד</span>${timeSel(q.actual_end || q.end_time || q.shift_end || q.start_time, "a-e", null, "סיים")}
+        <button class="btn small primary" onclick="saveActual(${id})">שמירה</button>
+        ${q.actual_start ? `<button class="btn small" onclick="saveActual(${id}, true)">ניקוי</button>` : ""}</div></div>` : ""}
+      ${rows || `<p class="muted">אין טבחים פעילים.</p>`}
+      <p class="hint">מי שמופיע עם הערה אדומה לא מתאים לגמרי. אפשר לשבץ אותו בכל זאת, וההחלטה שלך.</p>`});
+  window._seatModal = ov;
+}
+async function assignSeat(id, eid){
+  try {
+    await api("PUT", `/api/schedule/seats/${id}`, {employee_id:eid});
+    if (window._seatModal) window._seatModal.closeModal();
+    await loadSchedule();
+  } catch(e){ toast(e.message, true); }
+}
+function shiftLabel(q){
+  return q.shift_end ? `${q.start_time}-${q.shift_end}` : q.start_time;
+}
+async function saveActual(id, clear){
+  const ov = window._seatModal;
+  const body = clear ? {actual_start:null, actual_end:null}
+    : {actual_start: ov.querySelector(".a-s").value, actual_end: ov.querySelector(".a-e").value};
+  try { await api("PUT", `/api/schedule/seats/${id}`, body); ov.closeModal(); await loadSchedule(); toast(clear ? "נוקה" : "שעות בפועל נשמרו"); }
+  catch(e){ toast(e.message, true); }
+}
+async function toggleClosing(id, on){
+  try {
+    await api("PUT", `/api/schedule/seats/${id}`, {closing:on});
+    if (window._seatModal) window._seatModal.closeModal();
+    await loadSchedule();
+  } catch(e){ toast(e.message, true); }
+}
+function sendWhatsapp(){
+  const url = "https://wa.me/?text=" + encodeURIComponent(scheduleText());
+  window.open(url, "_blank");
+}
+function scheduleText(){
+  const lines = [`*סידור עבודה ${fmtDate(WEEK).slice(0,5)} עד ${fmtDate(addDays(WEEK,6)).slice(0,5)}*`];
+  for (const d of SCH.days){
+    lines.push("", `*${WD[d.weekday]} ${fmtDate(d.date).slice(0,5)}*${d.is_exception && d.name ? ` (${d.name})` : ""}`);
+    if (!d.is_open){ lines.push("סגור"); continue; }
+    for (const q of SCH.seats.filter(x => x.plan_date === d.date))
+      lines.push(`${shiftLabel(q)}${q.station_name ? " " + q.station_name : ""}: ${q.employee_name || "חסר"}${q.end_time ? " (סוגר)" : ""}`);
+  }
+  return lines.join("\n");
+}
+
+/* ---------- tracking ---------- */
+let STATS = null, SRANGE = null;
+function statsRange(kind){
+  const t = new Date(); const to = isoOf(t);
+  const back = n => { const d = new Date(); d.setDate(d.getDate() - n); return isoOf(d); };
+  return {w4:{from:back(27), to}, m3:{from:back(90), to}, y1:{from:back(364), to}}[kind];
+}
+async function loadStats(){
+  if (!SRANGE) SRANGE = {...statsRange("w4"), kind:"w4"};
+  try { STATS = await api("GET", `/api/stats?from=${SRANGE.from}&to=${SRANGE.to}`); } catch(e){ toast(e.message, true); return; }
+  if (TAB === "stats") render();
+}
+function setRange(kind){ SRANGE = {...statsRange(kind), kind}; STATS = null; render(); }
+const MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+function monthOptions(R){
+  const out = [], d = new Date(); d.setDate(1);
+  for (let i = 0; i < 12; i++){
+    const v = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+    out.push(`<option value="${v}" ${R.kind===v?"selected":""}>${MONTHS[d.getMonth()]} ${d.getFullYear()}</option>`);
+    d.setMonth(d.getMonth() - 1);
+  }
+  return out.join("");
+}
+function setMonth(v){
+  if (!v) return;
+  const [y, m] = v.split("-").map(Number);
+  SRANGE = {from:isoOf(new Date(y, m-1, 1)), to:isoOf(new Date(y, m, 0)), kind:v}; STATS = null; render();
+}
+function barList(items){
+  const max = Math.max(1, ...items.map(i => i.v));
+  return `<div class="bars">${items.map(i => `<div class="bar"><span>${i.l}</span>
+    <div class="track"><div class="fill" style="width:${Math.round(i.v / max * 100)}%"></div></div><span class="n">${i.v}</span></div>`).join("")}</div>`;
+}
+function statsView(){
+  if (!STATS){ loadStats(); return `<p class="muted">טוען…</p>`; }
+  const k = STATS.kitchen, R = SRANGE;
+  const btn = (kind, label) => `<button class="btn ${R.kind===kind?"primary":""}" onclick="setRange('${kind}')">${label}</button>`;
+  const head = `<div class="weeknav">${btn("w4","4 שבועות")}${btn("m3","3 חודשים")}${btn("y1","שנה")}
+      <span class="grow"></span>
+      <select aria-label="חודש" onchange="setMonth(this.value)"><option value="">חודש מסוים…</option>${monthOptions(R)}</select></div>
+    <p class="hint">${fmtDate(R.from)} עד ${fmtDate(R.to)}</p>`;
+  if (!STATS.employees.length) return head + `<div class="empty">אין סידורים שנבנו בטווח הזה.</div>`;
+  const kpis = `<div class="kpis">
+      <div class="kpi"><div class="v">${k.hours}</div><div class="l">שעות מטבח</div></div>
+      <div class="kpi"><div class="v">${k.shifts}</div><div class="l">ימי עבודה (כל הטבחים)</div></div>
+      <div class="kpi"><div class="v">${k.closings}</div><div class="l">סגירות</div></div></div>
+    <p class="hint">${k.actual_share ? `ב-${k.actual_share} משמרות הוזנו שעות בפועל. בשאר` : "החישוב"} לפי השעות המתוכננות בסידור. אפשר להזין שעות בפועל בלחיצה על משמרת בדף הסידור.</p>`;
+  const weeks = barList(STATS.per_week.map(w => ({l:fmtDate(w.week_start).slice(0,5), v:w.hours})));
+  const wds = barList(STATS.by_weekday.map(d => ({l:WD[d.weekday], v:d.hours})));
+  const table = `<div class="panel" style="margin-top:16px"><h2>לפי טבח</h2><div style="overflow-x:auto">
+    <table class="sumtab"><thead><tr><th>טבח</th><th>ימי עבודה</th><th>שעות</th><th>סגירות</th></tr></thead><tbody>
+    ${STATS.employees.map(e => `<tr><td><b>${esc(e.name)}</b></td><td>${e.days}</td><td>${e.hours}</td><td>${e.closings}</td></tr>`).join("")}
+    </tbody></table></div></div>`;
+  return head + kpis + `<div class="two"><div class="panel"><h2>שעות מטבח לפי שבוע</h2>${weeks}</div>
+    <div class="panel"><h2>שעות מטבח לפי יום בשבוע</h2>${wds}</div></div>` + table;
+}
+
+/* ---------- stations ---------- */
+function stationsView(){
+  const list = S.stations.map((s,i) => `<li class="${s.is_active?"":"inactive"}">
+    <input type="color" class="swatch" value="${s.color}" aria-label="צבע" onchange="saveStation(${s.id},{color:this.value})">
+    <span class="st-name">${esc(s.name)}</span>
+    <label class="switch"><input type="checkbox" ${s.is_active?"checked":""} onchange="saveStation(${s.id},{is_active:this.checked})"><span>${s.is_active?"פעילה":"מושבתת"}</span></label>
+    <button class="icon" aria-label="למעלה" ${i===0?"disabled":""} onclick="moveStation(${s.id},-1)">▲</button>
+    <button class="icon" aria-label="למטה" ${i===S.stations.length-1?"disabled":""} onclick="moveStation(${s.id},1)">▼</button>
+    <button class="icon" aria-label="שינוי שם" onclick="renameStation(${s.id})">✎</button>
+    <button class="icon danger" aria-label="מחיקה" onclick="delStation(${s.id})">✕</button></li>`).join("");
+  const next = PALETTE[S.stations.length % PALETTE.length];
+  return `<p class="intro">עמדות הן אופציונליות. אם לא משנה מי עומד באיזו עמדה, אפשר לדלג על הדף הזה. אם מגדירים עמדות, אפשר לקבוע בטמפלט שמגיע טבח לעמדה מסוימת, והסידור ישבץ רק מי שעובד בה.</p>
+  <div class="panel">
+    ${S.stations.length ? `<ul class="st-list">${list}</ul>` : `<div class="empty" style="margin-bottom:14px">עוד אין עמדות. הוסף את הראשונה.</div>`}
+    <div class="row">
+      <input type="color" class="swatch" id="st-color" value="${next}" aria-label="צבע">
+      <input type="text" id="st-name" placeholder="שם העמדה" onkeydown="if(event.key==='Enter')addStation()">
+      <button class="btn primary" onclick="addStation()">הוספה</button>
+    </div>
+  </div>`;
+}
+
+/* ---------- employees ---------- */
+function employeesView(){
+  const active = S.stations.filter(s => s.is_active);
+  const cards = S.employees.map(e => {
+    const lv = Object.fromEntries(e.stations.map(x => [x.station_id, x.level]));
+    const chips = active.length ? active.map(st => {
+      const l = lv[st.id] || "none";
+      return `<button class="chip ${l}" style="--c:${esc(st.color)}" title="${LEVELS[l]}. לחיצה משנה" onclick="cycleLevel(${e.id},${st.id},'${l}')">${esc(st.name)}${l==="primary"?" ★":""}</button>`;
+    }).join("") : `<span class="hint">עוד אין עמדות. <a href="#" onclick="setTab('stations');return false">להגדרת עמדות</a></span>`;
+    const numIn = (k, v) => `<input type="number" min="0" max="${k.includes("shifts")?14:120}" value="${v ?? ""}" placeholder="-" onchange="saveEmp(${e.id},{${k}:this.value})">`;
+    const av = Object.fromEntries(e.availability.map(a => [a.weekday, a]));
+    const days = WD.map((n,i) => { const a = av[i]; return `<div class="av ${a?"":"off"}">
+        <label class="switch"><input type="checkbox" aria-label="עובד ביום ${n}" ${a?"checked":""} onchange="toggleAvail(${e.id},${i},this.checked)"></label>
+        <span class="d">${n}</span>
+        ${a ? `${timeSel(a.start_time,"",`saveAvail(${e.id},${i},this)`,"משעה")}<span>עד</span>${timeSel(a.end_time,"",`saveAvail(${e.id},${i},this)`,"עד שעה")}${crosses(a.start_time,a.end_time)?'<span class="tag">למחרת</span>':""}`
+            : `<span class="off-txt">לא עובד</span>`}</div>`; }).join("");
+    return `<article class="emp ${e.is_active?"":"inactive"}">
+      <div class="emp-head"><h3>${esc(e.name)}</h3>
+        <label class="switch"><input type="checkbox" ${e.is_active?"checked":""} onchange="saveEmp(${e.id},{is_active:this.checked})"><span>${e.is_active?"פעיל":"לא פעיל"}</span></label>
+        <button class="icon" aria-label="שינוי שם" onclick="renameEmp(${e.id})">✎</button>
+        <button class="icon danger" aria-label="מחיקה" onclick="delEmp(${e.id})">✕</button></div>
+      <h4>עמדות</h4><div class="chips">${chips}</div>
+      <h4>מתי יכול לעבוד</h4>
+      <div class="avail">${days}</div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn small" onclick="fillAvail(${e.id},'open')">כל שעות הפעילות</button>
+        ${e.availability.length?`<button class="btn small" onclick="fillAvail(${e.id},'clear')">ניקוי</button>`:""}
+      </div>
+      <h4>מקסימום משמרות בשבוע</h4>
+      <div class="limits">
+        <label>עד ${numIn("max_shifts_week", e.max_shifts_week)} משמרות</label>
+      </div>
+    </article>`;
+  }).join("");
+  return `<p class="intro">לכל טבח מסמנים באילו עמדות הוא עובד (לחיצה מחליפה בין לא עובד בה, משנית וראשית ★), ובאילו ימים ושעות הוא יכול לעבוד. הסידור ישבץ אותו רק בתוך השעות האלה. מקסימום ריק פירושו בלי הגבלה.</p>
+  <div class="panel" style="margin-bottom:18px"><div class="row">
+    <input type="text" id="emp-name" placeholder="שם הטבח" onkeydown="if(event.key==='Enter')addEmp()">
+    <button class="btn primary" onclick="addEmp()">הוספת טבח</button></div></div>
+  ${S.employees.length ? `<div class="emps">${cards}</div>` : `<div class="empty">עוד אין טבחים. הוסף את הראשון למעלה.</div>`}`;
+}
+function addEmp(){
+  act(() => api("POST","/api/employees",{name:$("#emp-name").value})).then(() => { const i = $("#emp-name"); if (i) i.focus(); });
+}
+const saveEmp = (id, patch) => act(() => api("PUT", `/api/employees/${id}`, patch));
+function cycleLevel(eid, sid, cur){
+  const next = {none:"secondary", secondary:"primary", primary:"none"}[cur];
+  act(() => api("PUT", `/api/employees/${eid}/stations`, {station_id:sid, level:next}));
+}
+function renameEmp(id){
+  const e = S.employees.find(x => x.id === id);
+  modal({title:"שינוי שם טבח", html:`<div class="field"><label>שם</label><input type="text" id="rn" value="${esc(e.name)}"></div>`,
+    onOk: async () => { await api("PUT", `/api/employees/${id}`, {name:$("#rn").value}); await load(); }});
+}
+async function delEmp(id){
+  const e = S.employees.find(x => x.id === id);
+  if (!await confirmBox("מחיקת טבח", `למחוק את ${e.name} עם כל האילוצים שלו? אם הוא רק לא עובד כרגע, עדיף לסמן "לא פעיל".`)) return;
+  act(() => api("DELETE", `/api/employees/${id}`), "נמחק");
+}
+function toggleAvail(eid, wd, on){
+  if (!on){ act(() => api("PUT", `/api/employees/${eid}/availability`, {weekday:wd, available:false})); return; }
+  const p = S.weekdays.find(x => x.weekday === wd);
+  const start = (p && p.is_open && p.open_time) || "12:00", end = (p && p.is_open && p.close_time) || "23:00";
+  act(() => api("PUT", `/api/employees/${eid}/availability`, {weekday:wd, available:true, start_time:start, end_time:end}));
+}
+function saveAvail(eid, wd, el){
+  const [s, e] = el.parentElement.querySelectorAll("select.tsel");
+  act(() => api("PUT", `/api/employees/${eid}/availability`, {weekday:wd, available:true, start_time:s.value, end_time:e.value}));
+}
+const fillAvail = (eid, mode) => act(() => api("POST", `/api/employees/${eid}/availability/fill`, {mode}));
+
+/* ---------- restaurant ---------- */
+function restaurantView(){
+  const r = S.restaurant;
+  return `<div class="panel"><h2>פרטי המסעדה</h2>
+    <div class="row" style="align-items:flex-end">
+      <div class="field"><label for="r-name">שם</label><input type="text" id="r-name" value="${esc(r.name)}"></div>
+      <div class="field"><label for="r-slot">יחידת זמן לשיבוץ</label><select id="r-slot">${slotOptions(r.slot_minutes)}</select></div>
+      <div class="field"><label for="r-close">זמן סגירה אחרי שעת הסגירה (דקות)</label><input type="number" id="r-close" min="0" max="240" value="${r.closing_minutes ?? 30}"></div>
+      <button class="btn primary" onclick="saveRestaurant()">שמירת פרטים</button>
+    </div></div>
+  <div class="panel"><h2>העברה למסעדה אחרת</h2>
+    <p class="muted">כל ההגדרות (עמדות, טבחים, שבוע רגיל, תבניות וחריגים) נשמרות בקובץ אחד. בייבוא בוחרים מה להביא: במסעדה חדשה בדרך כלל לוקחים את המבנה בלי הטבחים. במסעדה חדשה אפשר להתחיל מהקובץ או מאפס.</p>
+    <div class="row">
+      <button class="btn" onclick="exportRestaurantFile()">ייצוא לקובץ</button>
+      <button class="btn" onclick="importDialog()">ייבוא מקובץ</button>
+      <button class="btn" onclick="duplicateDialog()">שכפול המסעדה</button>
+      <button class="btn" onclick="newRestaurantDialog()">מסעדה חדשה ריקה</button>
+    </div></div>
+  <div class="panel"><h2>גיבוי</h2>
+    <p class="muted">כל הנתונים נשמרים רק בטלפון הזה, בלי שרת ובלי סנכרון עם המחשב. הגיבוי שומר הכול בקובץ אחד: כל המסעדות, ההגדרות והסידורים שנבנו. כדאי לגבות אחרי כל שינוי משמעותי.</p>
+    <div class="row">
+      <button class="btn primary" onclick="downloadBackup()">הורדת גיבוי</button>
+      <button class="btn" onclick="restoreDialog()">שחזור מגיבוי</button>
+    </div>
+    <p class="hint">להעברת הנתונים מהמחשב: להריץ שם <b dir="ltr">python export_to_phone.py</b> ולשחזר כאן את הקובץ שנוצר. אפשר גם לייבא מסעדה אחת בעזרת "ייבוא מקובץ" עם קובץ ייצוא מהמחשב.</p></div>
+  <div class="panel"><h2>מחיקת המסעדה</h2>
+    <p class="muted">מוחק את כל ההגדרות של "${esc(r.name)}". כדאי לייצא קובץ לפני כן.</p>
+    <button class="btn danger" onclick="delRestaurant()">מחיקת המסעדה</button></div>`;
+}
+
+/* ---------- actions: export / backup ---------- */
+async function exportRestaurantFile(){
+  try { downloadJson(await api("GET", `/api/restaurants/${S.restaurant.id}/export`), `scheduler_restaurant_${S.restaurant.id}_${stamp()}.json`); }
+  catch(e){ toast(e.message, true); }
+}
+function downloadBackup(){
+  downloadJson(Store.backup(), `scheduler_backup_${stamp()}.json`);
+  toast("קובץ הגיבוי הורד");
+}
+function restoreDialog(){
+  modal({title:"שחזור מגיבוי", okText:"שחזור", danger:true,
+    html:`<p class="muted">השחזור מחליף את <b>כל</b> הנתונים שבטלפון בנתונים מהקובץ. אי אפשר לבטל.</p>
+          <div class="field"><label>קובץ גיבוי (.json)</label><input type="file" id="rs-file" accept=".json,application/json"></div>`,
+    onOk: async () => {
+      const f = $("#rs-file").files[0];
+      if (!f) throw new Error("לא נבחר קובץ");
+      let data; try { data = JSON.parse(await f.text()); } catch(e){ throw new Error("הקובץ לא תקין"); }
+      if (!Store.isBackup(data)){
+        if (data && data.format === "kitchen-scheduler") throw new Error('זה קובץ ייצוא של מסעדה אחת. אותו מייבאים עם "ייבוא מקובץ".');
+        throw new Error("הקובץ הזה לא נראה כמו גיבוי של סידור העבודה");
+      }
+      await Store.restore(data);
+      SCH = null; STATS = null;
+      await load(); toast("הנתונים שוחזרו");
+    }});
+}
+
+/* ---------- actions: restaurant ---------- */
+function saveRestaurant(){
+  act(() => api("PUT", `/api/restaurants/${S.restaurant.id}`, {name:$("#r-name").value, slot_minutes:+$("#r-slot").value, closing_minutes:+$("#r-close").value}), "הפרטים נשמרו");
+}
+async function delRestaurant(){
+  if (!await confirmBox("מחיקת המסעדה", `למחוק את "${S.restaurant.name}" עם כל ההגדרות שלה? אי אפשר לבטל.`)) return;
+  act(() => api("DELETE", `/api/restaurants/${S.restaurant.id}`), "המסעדה נמחקה");
+}
+function duplicateDialog(){
+  modal({title:"שכפול המסעדה", okText:"שכפול",
+    html:`<div class="field"><label>שם למסעדה החדשה</label><input type="text" id="dup-name" value="${esc(S.restaurant.name)} - עותק"></div>
+          <label class="row"><input type="checkbox" id="dup-emps"> להעתיק גם את הטבחים</label>
+          <label class="row"><input type="checkbox" id="dup-dates"> להעתיק גם חריגים לפי תאריך</label>
+          <p class="hint">עמדות, שבוע רגיל ותבניות מועתקים תמיד.</p>`,
+    onOk: async () => { await api("POST", `/api/restaurants/${S.restaurant.id}/duplicate`, {name:$("#dup-name").value, include_dates:$("#dup-dates").checked, include_employees:$("#dup-emps").checked}); await load(); toast("המסעדה שוכפלה"); }});
+}
+function importDialog(){
+  modal({title:"ייבוא מקובץ", okText:"ייבוא",
+    html:`<div class="field"><label>קובץ ייצוא (.json)</label><input type="file" id="imp-file" accept=".json,application/json"></div>
+          <div class="field"><label>שם למסעדה (ריק = השם מהקובץ)</label><input type="text" id="imp-name"></div>
+          <label class="row"><input type="checkbox" id="imp-emps"> לייבא גם את הטבחים</label>
+          <label class="row"><input type="checkbox" id="imp-dates"> לייבא גם חריגים לפי תאריך</label>`,
+    onOk: async () => {
+      const f = $("#imp-file").files[0];
+      if (!f) throw new Error("לא נבחר קובץ");
+      let data; try { data = JSON.parse(await f.text()); } catch(e){ throw new Error("הקובץ לא תקין"); }
+      await api("POST","/api/import",{data, name:$("#imp-name").value, include_dates:$("#imp-dates").checked, include_employees:$("#imp-emps").checked});
+      await load(); toast("הייבוא הושלם");
+    }});
+}
+
+/* ---------- actions: stations ---------- */
+function addStation(){
+  const name = $("#st-name").value;
+  act(() => api("POST","/api/stations",{name, color:$("#st-color").value})).then(() => { const i = $("#st-name"); if (i) i.focus(); });
+}
+const saveStation = (id, patch) => act(() => api("PUT", `/api/stations/${id}`, patch));
+const moveStation = (id, dir) => act(() => api("POST", `/api/stations/${id}/move`, {dir}));
+function renameStation(id){
+  const s = S.stations.find(x => x.id === id);
+  modal({title:"שינוי שם עמדה", html:`<div class="field"><label>שם</label><input type="text" id="rn" value="${esc(s.name)}"></div>`,
+    onOk: async () => { await api("PUT", `/api/stations/${id}`, {name:$("#rn").value}); await load(); }});
+}
+async function delStation(id){
+  const s = S.stations.find(x => x.id === id);
+  const used = [...S.weekdays, ...S.dates, ...S.presets].reduce((n,p) => n + p.requirements.filter(q => q.station_id === id).length, 0);
+  const msg = used ? `העמדה "${s.name}" מופיעה ב-${used} שורות בימים ובתבניות, והן יימחקו. אם רק מפסיקים להשתמש בה, עדיף להשבית.` : `למחוק את העמדה "${s.name}"?`;
+  if (!await confirmBox("מחיקת עמדה", msg)) return;
+  act(() => api("DELETE", `/api/stations/${id}`), "העמדה נמחקה");
+}
+
+/* ---------- actions: plans ---------- */
+function planEl(id){ return document.querySelector(`[data-plan="${id}"]`); }
+const setOpen = (id, v) => act(() => api("PUT", `/api/plans/${id}`, {is_open:v}));
+function readWindows(id){
+  return [...planEl(id).querySelectorAll(".win")].filter(w => w.querySelector(".w-a")).map(w => [w.querySelector(".w-a").value, w.querySelector(".w-z").value]);
+}
+const saveWindows = id => act(() => api("PUT", `/api/plans/${id}`, {windows:readWindows(id)}));
+const saveClosers = (id, v) => act(() => api("PUT", `/api/plans/${id}`, {closers:+v || 0}));
+function addWindow(id){
+  const w = readWindows(id);
+  const last = w.length ? w[w.length-1][1] : "17:00";
+  const h = Math.min(22, +last.slice(0,2) + 2);
+  w.push([`${String(h).padStart(2,"0")}:00`, "23:00"]);
+  act(() => api("PUT", `/api/plans/${id}`, {windows:w}));
+}
+function delWindow(id, i){
+  const w = readWindows(id); w.splice(i,1);
+  act(() => api("PUT", `/api/plans/${id}`, {windows:w}));
+}
+const renamePlan = (id, name) => act(() => api("PUT", `/api/plans/${id}`, {name}));
+async function delPlan(id, label){
+  if (!await confirmBox(`מחיקת ${label}`, `למחוק את ${label}?`)) return;
+  act(() => api("DELETE", `/api/plans/${id}`), "נמחק");
+}
+function copyDialog(id, fromWd){
+  modal({title:`העתקת יום ${WD[fromWd]}`, okText:"העתקה",
+    html:`<p class="muted">שעות הפעילות והדרישות של יום ${WD[fromWd]} יחליפו את מה שמוגדר בימים שתבחר.</p>
+      <div class="checks">${WD.map((n,i) => i===fromWd?"":`<label><input type="checkbox" value="${i}" class="cp-wd"> ${n}</label>`).join("")}</div>`,
+    onOk: async () => {
+      const weekdays = [...document.querySelectorAll(".cp-wd:checked")].map(c => +c.value);
+      if (!weekdays.length) throw new Error("לא נבחרו ימים");
+      await api("POST", `/api/plans/${id}/copy-to-weekdays`, {weekdays}); await load(); toast("הועתק");
+    }});
+}
+function presetDialog(id){
+  modal({title:"שמירה כתבנית", html:`<div class="field"><label>שם התבנית</label><input type="text" id="pr-name" placeholder="לדוגמה: ערב חג"></div>`,
+    onOk: async () => { await api("POST", `/api/plans/${id}/save-preset`, {name:$("#pr-name").value}); await load(); toast("התבנית נשמרה"); }});
+}
+function presetSelect(id){
+  return `<select id="${id}">${S.presets.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select>`;
+}
+function applyPresetDialog(id){
+  modal({title:"החלת תבנית", okText:"החלה",
+    html:`<p class="muted">שעות הפעילות והדרישות של התבנית יחליפו את מה שמוגדר ביום הזה.</p><div class="field"><label>תבנית</label>${presetSelect("ap-p")}</div>`,
+    onOk: async () => { await api("POST", `/api/plans/${id}/apply-preset`, {preset_id:+$("#ap-p").value}); await load(); toast("התבנית הוחלה"); }});
+}
+function holDialog(i){ const h = S.holidays[i]; dateDialog(h.date, h.name); }
+function dateDialog(d, name){
+  modal({title:"חריג לתאריך", okText:"יצירה",
+    html:`<div class="field"><label>תאריך</label><input type="date" id="dt-date" value="${d||""}" min="${S.today}"></div>
+      <div class="field"><label>שם (לא חובה)</label><input type="text" id="dt-name" value="${esc(name||"")}" placeholder="לדוגמה: אירוע סגור"></div>
+      <div class="field"><label>להתחיל מ</label><select id="dt-src"><option value="">היום הרגיל באותו יום בשבוע</option>
+        ${S.presets.map(p => `<option value="${p.id}">תבנית: ${esc(p.name)}</option>`).join("")}</select></div>`,
+    onOk: async () => {
+      const src = $("#dt-src").value;
+      await api("POST","/api/dates",{date:$("#dt-date").value, name:$("#dt-name").value, preset_id: src ? +src : null});
+      await load(); toast("החריג נוצר");
+    }});
+}
+
+/* ---------- actions: requirements ---------- */
+function defaultEnd(plan, start){
+  const wins = plan.windows || [];
+  const w = wins.find(w => w[0] <= start && start < w[1]) || wins[wins.length-1];
+  return w ? w[1] : "23:00";
+}
+function addReq(planId){
+  const plan = [...S.weekdays, ...S.dates, ...S.presets].find(p => p.id === planId);
+  const start = (plan.windows && plan.windows[0] && plan.windows[0][0]) || plan.open_time || "12:00";
+  act(() => api("POST", `/api/plans/${planId}/requirements`, {station_id:null, start_time:start, end_time:defaultEnd(plan, start), count:1}));
+}
+function saveReq(id){
+  const tr = document.querySelector(`[data-req="${id}"]`);
+  const sel = tr.querySelector(".r-st"), s = tr.querySelector(".r-s"), n = tr.querySelector(".r-n"), e = tr.querySelector(".r-e");
+  act(() => api("PUT", `/api/requirements/${id}`, {station_id: sel && sel.value ? +sel.value : null,
+    start_time:s.value, count:+n.value, end_time:e.value}));
+}
+const delReq = id => act(() => api("DELETE", `/api/requirements/${id}`));
+
+Store.load().then(load).catch(e => { $("#app").innerHTML = `<div class="setup panel"><h2>שגיאה בטעינת הנתונים</h2><p class="muted">נסה לרענן את הדף. (${esc(e.message)})</p></div>`; });
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
