@@ -773,16 +773,22 @@ function downloadBackup(){
   downloadJson(Store.backup(), `scheduler_backup_${stamp()}.json`);
   toast("קובץ הגיבוי הורד");
 }
-function restoreDialog(){
+function restoreDialog(url){
   modal({title:"שחזור מגיבוי", okText:"שחזור", danger:true,
     html:`<p class="muted">השחזור מחליף את <b>כל</b> הנתונים שבטלפון בנתונים מהקובץ. אי אפשר לבטל.</p>
-          <div class="field"><label>קובץ גיבוי</label><input type="file" id="rs-file"></div>
+          <div class="field"><label>קישור לגיבוי</label><input type="text" id="rs-url" dir="ltr" placeholder="https://..." value="${esc(url||"")}"></div>
+          <div class="field"><label>או קובץ גיבוי</label><input type="file" id="rs-file"></div>
           <div class="field"><label>או הדבקת הטקסט של הגיבוי</label><textarea id="rs-text" rows="4" dir="ltr" placeholder="{&quot;format&quot;: &quot;kitchen-scheduler-phone&quot;, ..." style="width:100%;font:inherit;font-size:.85rem;border:1px solid var(--line);border-radius:6px;padding:6px"></textarea>
             <span class="hint">אם הטלפון לא מצליח לבחור את הקובץ: לפתוח את הקובץ במחשב בפנקס רשימות, להעתיק הכול, לשלוח לעצמך בוואטסאפ, ולהדביק כאן.</span></div>`,
     onOk: async () => {
-      const f = $("#rs-file").files[0], pasted = $("#rs-text").value.trim();
-      if (!f && !pasted) throw new Error("לא נבחר קובץ ולא הודבק טקסט");
-      let data; try { data = JSON.parse(pasted || await f.text()); } catch(e){ throw new Error(pasted ? "הטקסט שהודבק לא שלם או לא תקין" : "הקובץ לא תקין"); }
+      const f = $("#rs-file").files[0], pasted = $("#rs-text").value.trim(), link = $("#rs-url").value.trim();
+      if (!f && !pasted && !link) throw new Error("לא הוזן קישור, לא נבחר קובץ ולא הודבק טקסט");
+      let raw;
+      if (link){
+        try { const r = await fetch(link, {cache:"no-store"}); if (!r.ok) throw new Error(); raw = await r.text(); }
+        catch(e){ throw new Error("לא הצלחתי להוריד את הגיבוי מהקישור. בדוק שיש אינטרנט ושהקישור נכון."); }
+      } else raw = pasted || await f.text();
+      let data; try { data = JSON.parse(raw); } catch(e){ throw new Error(link ? "בקישור אין גיבוי תקין" : pasted ? "הטקסט שהודבק לא שלם או לא תקין" : "הקובץ לא תקין"); }
       if (!Store.isBackup(data)){
         if (data && data.format === "kitchen-scheduler") throw new Error('זה קובץ ייצוא של מסעדה אחת. אותו מייבאים עם "ייבוא מקובץ".');
         throw new Error("הקובץ הזה לא נראה כמו גיבוי של סידור העבודה");
@@ -936,7 +942,11 @@ function saveReq(id){
 }
 const delReq = id => act(() => api("DELETE", `/api/requirements/${id}`));
 
-Store.load().then(load).catch(e => { $("#app").innerHTML = `<div class="setup panel"><h2>שגיאה בטעינת הנתונים</h2><p class="muted">נסה לרענן את הדף. (${esc(e.message)})</p></div>`; });
+Store.load().then(load).then(() => {
+  // קישור העברה: ...?restore=<כתובת הגיבוי> פותח את חלון השחזור עם הקישור
+  const link = new URLSearchParams(location.search).get("restore");
+  if (link){ history.replaceState(null, "", location.pathname); restoreDialog(link); }
+}).catch(e => { $("#app").innerHTML = `<div class="setup panel"><h2>שגיאה בטעינת הנתונים</h2><p class="muted">נסה לרענן את הדף. (${esc(e.message)})</p></div>`; });
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
   window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(() => {}));
 }
