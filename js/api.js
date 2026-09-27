@@ -97,7 +97,7 @@ const LocalApi = (() => {
   }
   function getEmployee(eid, rid) {
     const e = Store.byId("employees", eid);
-    if (!e || e.restaurant_id !== rid) throw new ApiError("העובד לא נמצא", 404);
+    if (!e || e.restaurant_id !== rid) throw new ApiError("הטבח לא נמצא", 404);
     return e;
   }
 
@@ -258,7 +258,7 @@ const LocalApi = (() => {
     }
     if (includeEmployees) {
       (data.employees || []).forEach((e, i) => {
-        const emp = Store.insert("employees", {restaurant_id: rid, name: cleanName(e.name, "שם עובד"),
+        const emp = Store.insert("employees", {restaurant_id: rid, name: cleanName(e.name, "שם טבח"),
           is_active: (e.is_active ?? 1) ? 1 : 0, max_shifts_week: e.max_shifts_week ?? null,
           max_hours_week: e.max_hours_week ?? null, target_shifts_week: e.target_shifts_week ?? null,
           note: e.note ?? null, sort_order: parseInt(e.sort_order ?? i, 10)});
@@ -349,7 +349,7 @@ const LocalApi = (() => {
       return [start, start + spanMin(seat.start_time, end)];
     }
     stationName(seat) {
-      return seat.station_id ? this.stations.get(seat.station_id).name : "עובד";
+      return seat.station_id ? this.stations.get(seat.station_id).name : "טבח";
     }
     staticIssues(emp, seat) {
       const issues = [];
@@ -376,7 +376,7 @@ const LocalApi = (() => {
     return [(spanMin(q.start_time, end) + (q.end_time ? cleanup : 0)) / 60, false];
   }
 
-  // שעות ב-3 השבועות שלפני ws, לכל עובד. weeks = שבועות שבהם עבד (שבוע בלי משמרות = חופש, לא נספר)
+  // שעות ב-3 השבועות שלפני ws, לכל טבח. weeks = שבועות שבהם עבד (שבוע בלי משמרות = חופש, לא נספר)
   function historyBefore(rid, ws, cleanup) {
     const out = new Map();
     for (let k = 1; k <= 3; k++) {
@@ -464,7 +464,19 @@ const LocalApi = (() => {
   const R = [];
   const route = (method, path, fn) => R.push([method, new RegExp("^" + path.replace(/<int>/g, "(\\d+)") + "$"), fn]);
 
+  // צוות שנוצר לפני שהיה פלור באפליקציה (לפני 28/09/2026 01:42) הוא מטבח. בגרסה קודמת אפשר היה
+  // להפוך אותו לפלור בטעות מההגדרות - מחזירים אותו למטבח.
+  const FLOOR_RELEASE = "2026-09-28T01:42";
+  function fixOldTeams() {
+    for (const r of DB().restaurants) {
+      if (r.staff_type === "floor" && r.created_at && r.created_at < FLOOR_RELEASE) r.staff_type = "kitchen";
+      // וההפך: צוות חדש בשם "פלור" שנוצר כמטבח (כשהמטבח סומן בטעות כפלור, "צוות חדש" הציע מטבח)
+      else if (r.staff_type !== "floor" && r.created_at && r.created_at >= FLOOR_RELEASE && r.name.includes("פלור")) r.staff_type = "floor";
+    }
+  }
+
   route("GET", "/api/state", () => {
+    fixOldTeams();
     const rid = activeRid();
     const restaurants = [...DB().restaurants].sort((a, b) => a.id - b.id).map(r => ({id: r.id, name: r.name, staff_type: r.staff_type || "kitchen"}));
     if (!rid) return {restaurant: null, restaurants, weekday_names: WEEKDAYS};
@@ -497,9 +509,8 @@ const LocalApi = (() => {
     const rest = getRestaurant(rid);
     const closing = optInt(b.closing_minutes ?? rest.closing_minutes, "זמן סגירה", 0, 240);
     const name = cleanName(b.name, "שם המסעדה"), slot = checkSlot(b.slot_minutes ?? 30);
-    const staffType = b.staff_type ?? rest.staff_type ?? "kitchen";
-    if (!["kitchen", "floor"].includes(staffType)) throw new ApiError("סוג צוות לא תקין");
-    Object.assign(rest, {name, slot_minutes: slot, closing_minutes: closing === null ? 30 : closing, staff_type: staffType});
+    // סוג הצוות (מטבח/פלור) נקבע ביצירה ולא משתנה אחר כך
+    Object.assign(rest, {name, slot_minutes: slot, closing_minutes: closing === null ? 30 : closing});
     return {ok: true};
   });
   route("DELETE", "/api/restaurants/<int>", ([rid]) => {
@@ -652,8 +663,8 @@ const LocalApi = (() => {
       if (end === start) throw new ApiError("שעת ההגעה והסיום זהות");
     }
     const count = Number(b.count ?? 1);
-    if (!Number.isInteger(count)) throw new ApiError("כמות עובדים לא תקינה");
-    if (count < 1 || count > 50) throw new ApiError("כמות העובדים צריכה להיות בין 1 ל-50");
+    if (!Number.isInteger(count)) throw new ApiError("כמות טבחים לא תקינה");
+    if (count < 1 || count > 50) throw new ApiError("כמות הטבחים צריכה להיות בין 1 ל-50");
     return {station_id: stationId, start_time: start, end_time: end, count, end_mode: mode};
   }
   route("POST", "/api/plans/<int>/requirements", ([pid], b) => {
@@ -675,9 +686,9 @@ const LocalApi = (() => {
   // employees
   route("POST", "/api/employees", (p, b) => {
     const rid = requireRid();
-    const name = cleanName(b.name, "שם העובד");
+    const name = cleanName(b.name, "שם הטבח");
     const mine = Store.where("employees", e => e.restaurant_id === rid);
-    if (mine.some(e => e.name === name)) throw new ApiError("כבר יש עובד בשם הזה");
+    if (mine.some(e => e.name === name)) throw new ApiError("כבר יש טבח בשם הזה");
     const top = mine.reduce((m, e) => Math.max(m, e.sort_order), -1);
     return {id: Store.insert("employees", {restaurant_id: rid, name, is_active: 1, max_shifts_week: null,
       max_hours_week: null, target_shifts_week: null, note: null, sort_order: top + 1}).id};
@@ -685,8 +696,8 @@ const LocalApi = (() => {
   route("PUT", "/api/employees/<int>", ([eid], b) => {
     const rid = requireRid();
     const e = getEmployee(eid, rid);
-    const name = cleanName(b.name ?? e.name, "שם העובד");
-    if (DB().employees.some(x => x.restaurant_id === rid && x.name === name && x.id !== eid)) throw new ApiError("כבר יש עובד בשם הזה");
+    const name = cleanName(b.name ?? e.name, "שם הטבח");
+    if (DB().employees.some(x => x.restaurant_id === rid && x.name === name && x.id !== eid)) throw new ApiError("כבר יש טבח בשם הזה");
     const maxS = "max_shifts_week" in b ? optInt(b.max_shifts_week, "מקסימום משמרות", 0, 14) : e.max_shifts_week;
     const maxH = "max_hours_week" in b ? optInt(b.max_hours_week, "מקסימום שעות", 0, 120) : e.max_hours_week;
     Object.assign(e, {name, is_active: (b.is_active ?? e.is_active) ? 1 : 0, max_shifts_week: maxS,

@@ -255,8 +255,13 @@ function timeSel(value, cls, onchange, label){
 }
 // שעת סיום של שורת הגעה. "לפי העבודה" = בלי שעת סיום (יורד כשהעבודה נגמרת)
 function endSel(q, onchange){
-  return `<select class="tsel r-e wide" aria-label="עד שעה" onchange="${onchange}">
-    <option value="" ${q.end_time?"":"selected"}>לפי העבודה</option>${timeOptions(q.end_time)}</select>`;
+  const byWork = S.restaurant.staff_type === "floor" || !q.end_time;
+  return `<select class="tsel r-e ${byWork?"wide":""}" aria-label="עד שעה" onchange="${onchange}">
+    ${byWork ? `<option value="" ${q.end_time?"":"selected"}>לפי העבודה</option>` : ""}${timeOptions(q.end_time)}</select>`;
+}
+// בצוות פלור מדברים על "עובדים" ולא על "טבחים" (המטבח נשאר בדיוק כמו שהיה)
+function tw(html){
+  return S && S.restaurant && S.restaurant.staff_type === "floor" ? String(html).replace(/(?<!מ)טבח/g, "עובד") : html;
 }
 function wdOf(iso){ const [y,m,d] = iso.split("-").map(Number); return new Date(y,m-1,d).getDay(); }
 
@@ -279,7 +284,7 @@ let toastTimer;
 function toast(msg, err){
   document.querySelectorAll(".toast").forEach(t => t.remove());
   const t = document.createElement("div");
-  t.className = "toast" + (err ? " err" : ""); t.textContent = msg; t.setAttribute("role","status");
+  t.className = "toast" + (err ? " err" : ""); t.textContent = tw(msg); t.setAttribute("role","status");
   document.body.appendChild(t);
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), err ? 4500 : 2200);
 }
@@ -288,8 +293,8 @@ function toast(msg, err){
 function modal({title, html, okText="שמירה", danger=false, onOk, noOk=false}){
   const ov = document.createElement("div");
   ov.className = "overlay";
-  ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><div class="m-body">${html||""}</div>
-    <div class="actions">${noOk?"":`<button class="btn ${danger?"danger":"primary"}" data-ok>${esc(okText)}</button>`}<button class="btn" data-cancel>${noOk?"סגירה":"ביטול"}</button></div></div>`;
+  ov.innerHTML = tw(`<div class="modal" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><div class="m-body">${html||""}</div>
+    <div class="actions">${noOk?"":`<button class="btn ${danger?"danger":"primary"}" data-ok>${esc(okText)}</button>`}<button class="btn" data-cancel>${noOk?"סגירה":"ביטול"}</button></div></div>`);
   const close = () => { ov.remove(); document.removeEventListener("keydown", onKey); };
   const ok = async () => {
     try { const res = await onOk(ov); if (res !== false) close(); }
@@ -319,16 +324,16 @@ function render(){
   const app = $("#app");
   if (!S.restaurant){ app.innerHTML = setupView(); return; }
   const holN = openHolidays(S.today, addDays(S.today, 30)).length;
-  const tabs = [["schedule","סידור"],["stats","מעקב"],["week","בניית טמפלט לסידור"],["employees","עובדים"],["dates", holN ? `חגים וחריגים (${holN})` : "חגים וחריגים"],["stations","עמדות"],["restaurant","מסעדה"]];
+  const tabs = [["schedule","סידור"],["stats","מעקב"],["week","בניית טמפלט לסידור"],["employees","טבחים"],["dates", holN ? `חגים וחריגים (${holN})` : "חגים וחריגים"],["stations","עמדות"],["restaurant","מסעדה"]];
   const y = window.scrollY;
-  app.innerHTML = `
+  app.innerHTML = tw(`
     <header class="rail">
       <h1>סידור עבודה</h1>
     </header>
     <nav class="teams" aria-label="צוותים">${S.restaurants.map(r => `<button class="team ${r.id===S.restaurant.id?"on":""}" aria-pressed="${r.id===S.restaurant.id}" onclick="switchRestaurant(${r.id})">${esc(r.name)}${(t => r.name.includes(t) ? "" : `<small>${t}</small>`)(r.staff_type==="floor"?"פלור":"מטבח")}</button>`).join("")}
       <button class="team add" onclick="newRestaurantDialog()">+ צוות חדש</button></nav>
     <nav class="tabs" role="tablist">${tabs.map(([k,l]) => `<button role="tab" class="${TAB===k?"on":""}" aria-selected="${TAB===k}" onclick="setTab('${k}')">${l}</button>`).join("")}</nav>
-    <main>${({schedule:scheduleView, stats:statsView, stations:stationsView, employees:employeesView, week:weekView, dates:datesView, restaurant:restaurantView}[TAB] || stationsView)()}</main>`;
+    <main>${({schedule:scheduleView, stats:statsView, stations:stationsView, employees:employeesView, week:weekView, dates:datesView, restaurant:restaurantView}[TAB] || stationsView)()}</main>`);
   window.scrollTo(0, y);
 }
 function setTab(k){ TAB = k; if (k === "schedule") SCH = null; if (k === "stats") STATS = null; try { localStorage.setItem("sched_tab", k); } catch(e) {} window.scrollTo(0,0); render(); }
@@ -337,7 +342,7 @@ function setTab(k){ TAB = k; if (k === "schedule") SCH = null; if (k === "stats"
 function setupView(){
   return `<div class="setup panel">
     <h2>מתחילים</h2>
-    <p class="muted">הגדר את המסעדה. אחר כך תוסיף עמדות ותגדיר כמה עובדים צריך בכל יום. כל ההגדרות ניתנות לשינוי בכל שלב.</p>
+    <p class="muted">הגדר את המסעדה. אחר כך תוסיף עמדות ותגדיר כמה טבחים צריך בכל יום. כל ההגדרות ניתנות לשינוי בכל שלב.</p>
     <div class="field"><label for="sname">שם המסעדה</label><input type="text" id="sname" placeholder="לדוגמה: המסעדה בנמל"></div>
     <div class="field"><label for="sslot">יחידת זמן לשיבוץ</label><select id="sslot">${slotOptions(30)}</select>
       <span class="hint">הדיוק שבו המערכת תשבץ שעות. 30 דקות מתאים לרוב המטבחים.</span></div>
@@ -357,7 +362,7 @@ function switchRestaurant(v){
   act(() => api("POST", `/api/restaurants/${v}/activate`));
 }
 function newRestaurantDialog(){
-  const floorNext = S.restaurant && S.restaurant.staff_type !== "floor";
+  const floorNext = !!S.restaurant && !S.restaurants.some(r => r.staff_type === "floor");
   modal({title:"צוות חדש", okText:"יצירה",
     html:`<div class="field"><label>סוג צוות</label><select id="nr-type">${staffOptions(floorNext ? "floor" : "kitchen")}</select></div>
           <div class="field"><label>שם (יופיע בלשונית למעלה)</label><input type="text" id="nr-name" value="${floorNext ? "פלור" : ""}" placeholder="לדוגמה: פלור, בר, מטבח"></div>
@@ -383,8 +388,8 @@ function ticket(p, o){
         ${S.stations.filter(s => s.is_active || s.id === q.station_id).map(s => `<option value="${s.id}" ${s.id===q.station_id?"selected":""}>${esc(s.name)}</option>`).join("")}
       </select>` : "";
     return `<div class="req" data-req="${q.id}" style="--c:${esc(q.station_color || "#8A969C")}">
-      <input type="number" class="r-n" aria-label="כמה עובדים" min="1" max="50" value="${q.count}" onchange="saveReq(${q.id})">
-      <span>${q.count>1?"עובדים":"עובד"} מ-</span>${timeSel(q.start_time,"r-s",`saveReq(${q.id})`,"משעה")}
+      <input type="number" class="r-n" aria-label="כמה טבחים" min="1" max="50" value="${q.count}" onchange="saveReq(${q.id})">
+      <span>${q.count>1?"טבחים":"טבח"} מ-</span>${timeSel(q.start_time,"r-s",`saveReq(${q.id})`,"משעה")}
       <span>עד</span>${endSel(q, `saveReq(${q.id})`)}
       ${stSel}
       <button class="icon danger x" title="מחיקת שורה" aria-label="מחיקת שורה" onclick="delReq(${q.id})">✕</button></div>`;
@@ -402,18 +407,18 @@ function ticket(p, o){
       <div class="wins">${winHtml}</div>
       <div class="row" style="margin:6px 0 4px"><button class="btn small" onclick="addWindow(${p.id})">+ עוד חלון</button></div>
       <div class="win" style="margin-top:6px"><span>כמה סוגרים:</span>
-        <input type="number" aria-label="כמה עובדים סוגרים" min="0" max="50" value="${closers}" onchange="saveClosers(${p.id},this.value)"></div>
+        <input type="number" aria-label="כמה טבחים סוגרים" min="0" max="50" value="${closers}" onchange="saveClosers(${p.id},this.value)"></div>
       <div class="blk-label">מי מגיע ומתי</div>
       ${p.requirements.length ? `<div class="reqs">${rows}</div>` : `<p class="closed-note">עוד לא הוגדר מי מגיע ביום הזה.</p>`}
       <div class="row" style="margin-top:6px"><button class="btn small" onclick="addReq(${p.id})">+ הוספת הגעה</button></div>`
       : `<p class="closed-note">המסעדה סגורה ביום הזה.</p>`}
-    <div class="t-foot">${o.actions}${p.is_open && people ? `<span class="sum">${people} עובדים, ${closers} סוגרים</span>`:""}</div>
+    <div class="t-foot">${o.actions}${p.is_open && people ? `<span class="sum">${people} טבחים, ${closers} סוגרים</span>`:""}</div>
   </article>`;
 }
 
 /* ---------- week ---------- */
 function weekView(){
-  return `<p class="intro">לכל יום: שעות הפעילות, כמה סוגרים בסוף היום, ומי מגיע ומתי. הסוגרים נבחרים אוטומטית מבין מי שעובד עד הסגירה, עם עדיפות למי שהגיע מאוחר${S.restaurant.staff_type==="floor"?"":", וכל עובד סוגר לפחות פעם בשבוע"}. שעת סיום "לפי העבודה" = העובד יורד כשהעבודה נגמרת. עמדה היא אופציונלית. ימים עם שעות אחרות (חגים, אירועים) מגדירים בלשונית "חגים וחריגים".</p>
+  return `<p class="intro">לכל יום: שעות הפעילות, כמה סוגרים בסוף היום, ומי מגיע ומתי. הסוגרים נבחרים אוטומטית מבין מי שעובד עד הסגירה, עם עדיפות למי שהגיע מאוחר${S.restaurant.staff_type==="floor"?"":", וכל טבח סוגר לפחות פעם בשבוע"}. שעת סיום "לפי העבודה" = הטבח יורד כשהעבודה נגמרת. עמדה היא אופציונלית. ימים עם שעות אחרות (חגים, אירועים) מגדירים בלשונית "חגים וחריגים".</p>
   <div class="tickets">${S.weekdays.map(p => ticket(p, {
     title:`<h3>${WD[p.weekday]}</h3>`,
     actions:`<button class="btn small" onclick="copyDialog(${p.id},${p.weekday})">העתקה לימים אחרים</button>
@@ -471,9 +476,9 @@ function scheduleView(){
   if (!SCH || SCH.week_start !== WEEK){ loadSchedule(); return `<p class="muted">טוען…</p>`; }
   const r = SCH.ready;
   const blockers = [], warns = [];
-  if (!r.employees) blockers.push(["אין עובדים", "employees", "להוספת עובדים"]);
+  if (!r.employees) blockers.push(["אין טבחים", "employees", "להוספת טבחים"]);
   if (!r.needed) blockers.push(["לא הוגדר מי מגיע ומתי בימים של השבוע הזה", "week", "לבניית הטמפלט"]);
-  if (r.employees && r.with_availability < r.employees) warns.push([`${r.employees - r.with_availability} עובדים בלי שעות זמינות, הם לא ישובצו`, "employees", "לעובדים"]);
+  if (r.employees && r.with_availability < r.employees) warns.push([`${r.employees - r.with_availability} טבחים בלי שעות זמינות, הם לא ישובצו`, "employees", "לטבחים"]);
   const list = (items) => `<ul>${items.map(([t,tab,btn]) => `<li>${t} <button class="btn small" onclick="setTab('${tab}')">${btn}</button></li>`).join("")}</ul>`;
   const end = addDays(WEEK, 6);
   const nav = `<div class="weeknav">
@@ -501,9 +506,9 @@ function scheduleView(){
     const holes = SCH.seats.filter(q => !q.employee_id).length, total = SCH.seats.length;
     stat = `<p class="stat">${total - holes} מתוך ${total} משמרות מאוישות. ${holes
       ? `<b class="bad">${holes} חסרות</b>, לחיצה על משמרת אדומה מראה מי יכול להשלים.`
-      : `<b class="good">הסידור מלא.</b>`} לחיצה על כל משמרת מאפשרת להחליף עובד.</p>`;
+      : `<b class="good">הסידור מלא.</b>`} לחיצה על כל משמרת מאפשרת להחליף טבח.</p>`;
   } else if (!blockers.length){
-    stat = `<p class="stat">הסידור לשבוע הזה עוד לא נבנה. לחיצה על "בניית סידור" תשבץ את העובדים לפי העמדות והשעות שלהם.</p>`;
+    stat = `<p class="stat">הסידור לשבוע הזה עוד לא נבנה. לחיצה על "בניית סידור" תשבץ את הטבחים לפי העמדות והשעות שלהם.</p>`;
   }
 
   const days = SCH.days.map(d => {
@@ -515,15 +520,15 @@ function scheduleView(){
         <span class="tm">${shiftLabel(q)}</span>${q.station_name?`<span class="st">${esc(q.station_name)}</span>`:""}${q.end_time?`<span class="tag">סוגר ${q.end_time}</span>`:""}
         <span class="who">${q.employee_id ? esc(q.employee_name) : "חסר"}</span>${q.is_manual?`<span class="man">ידני</span>`:""}${q.actual_start?`<span class="man" title="שעות בפועל">✓ ${q.actual_start}-${q.actual_end}</span>`:""}</button>`).join("")
         : `<p class="need">אין משמרות ביום הזה.</p>`;
-    else body = `<p class="need">${d.needed ? `צריך ${d.needed} עובדים` : "לא הוגדר מי מגיע"}</p>`;
+    else body = `<p class="need">${d.needed ? `צריך ${d.needed} טבחים` : "לא הוגדר מי מגיע"}</p>`;
     return `<div class="sday">${title}${body}</div>`;
   }).join("");
 
   const floor = SCH.staff_type === "floor";
-  const sum = SCH.built && SCH.summary.length ? `<div class="panel" style="margin-top:18px"><h2>סיכום לפי עובד</h2><p class="hint">${floor
+  const sum = SCH.built && SCH.summary.length ? `<div class="panel" style="margin-top:18px"><h2>סיכום לפי טבח</h2><p class="hint">${floor
       ? "במשמרות \"לפי העבודה\" השעות נספרות רק אחרי שמזינים שעת ירידה בפועל (לחיצה על המשמרת)."
-      : "הסידור מאזן שעות על פני 4 שבועות (השבוע ו-3 שקודמים לו). שבוע שעובד לא עבד בו בכלל נחשב חופש ולא מפוצה."}</p>
-    <table class="sumtab"><thead><tr><th>עובד</th><th>משמרות</th><th>שעות</th><th>סגירות</th>${floor?"":"<th>שעות ב-4 שבועות</th>"}</tr></thead><tbody>
+      : "הסידור מאזן שעות על פני 4 שבועות (השבוע ו-3 שקודמים לו). שבוע שטבח לא עבד בו בכלל נחשב חופש ולא מפוצה."}</p>
+    <table class="sumtab"><thead><tr><th>טבח</th><th>משמרות</th><th>שעות</th><th>סגירות</th>${floor?"":"<th>שעות ב-4 שבועות</th>"}</tr></thead><tbody>
     ${SCH.summary.map(e => `<tr><td>${esc(e.name)}</td>
       <td class="${e.max_shifts!=null && e.shifts>e.max_shifts?"over":""}">${e.shifts}${e.max_shifts!=null?` מתוך ${e.max_shifts}`:""}</td>
       <td>${e.hours}</td><td>${e.closings}</td>${floor?"":`<td>${e.hours4}</td>`}</tr>`).join("")}
@@ -542,7 +547,7 @@ function weekAvailPanel(floor){
       + (e.max_shifts != null ? `, עד ${e.max_shifts} משמרות` : "");
   return `<details class="panel" style="margin-bottom:16px" ${floor && n < list.length ? "open" : ""}>
     <summary style="margin:0">זמינות לשבוע הזה: ${n} מתוך ${list.length} עודכנו</summary>
-    <p class="hint">מה כל עובד נותן בשבוע הזה. מי שלא עודכן לו משובץ לפי הזמינות הקבועה שלו (לשונית "עובדים"). אפשר לעדכן גם אחרי הבנייה ואז לבנות מחדש.</p>
+    <p class="hint">מה כל טבח נותן בשבוע הזה. מי שלא עודכן לו משובץ לפי הזמינות הקבועה שלו (לשונית "טבחים"). אפשר לעדכן גם אחרי הבנייה ואז לבנות מחדש.</p>
     <ul class="walist">${list.map(e => `<li><b>${esc(e.name)}</b> <span class="hint">${esc(desc(e))}</span>
       <button class="btn small" onclick="weekAvailDialog(${e.id})">עריכה</button></li>`).join("")}</ul></details>`;
 }
@@ -561,7 +566,7 @@ function weekAvailDialog(eid){
         `<option value="${v}" ${(a && a.mode || "any")===v?"selected":""}>${l}</option>`).join("")}</select></div>`;
   }).join("");
   const ov = modal({title:`${emp.name}: זמינות ל-${fmtDate(WEEK).slice(0,5)} עד ${fmtDate(addDays(WEEK,6)).slice(0,5)}`,
-    html:`<p class="hint">מסמנים רק את הימים שהעובד נותן בשבוע הזה. זה לא משנה את הזמינות הקבועה שלו.</p>
+    html:`<p class="hint">מסמנים רק את הימים שהטבח נותן בשבוע הזה. זה לא משנה את הזמינות הקבועה שלו.</p>
       <div class="avail">${rows}</div>
       <label class="row" style="margin-top:10px">עד <input type="number" id="wa-max" min="0" max="14" value="${maxv ?? ""}" placeholder="-"> משמרות בשבוע הזה</label>
       ${w.submitted ? `<button class="btn small" style="margin-top:10px" id="wa-reset">חזרה לזמינות הקבועה</button>` : ""}`,
@@ -611,7 +616,7 @@ async function seatDialog(id){
         <div class="row">${timeSel(q.actual_start || q.start_time, "a-s", null, "התחיל")}<span>עד</span>${timeSel(q.actual_end || q.end_time || q.shift_end || q.start_time, "a-e", null, "סיים")}
         <button class="btn small primary" onclick="saveActual(${id})">שמירה</button>
         ${q.actual_start ? `<button class="btn small" onclick="saveActual(${id}, true)">ניקוי</button>` : ""}</div></div>` : ""}
-      ${rows || `<p class="muted">אין עובדים פעילים.</p>`}
+      ${rows || `<p class="muted">אין טבחים פעילים.</p>`}
       <p class="hint">מי שמופיע עם הערה אדומה לא מתאים לגמרי. אפשר לשבץ אותו בכל זאת, וההחלטה שלך.</p>`});
   window._seatModal = ov;
 }
@@ -698,13 +703,13 @@ function statsView(){
   if (!STATS.employees.length) return head + `<div class="empty">אין סידורים שנבנו בטווח הזה.</div>`;
   const kpis = `<div class="kpis">
       <div class="kpi"><div class="v">${k.hours}</div><div class="l">שעות מטבח</div></div>
-      <div class="kpi"><div class="v">${k.shifts}</div><div class="l">ימי עבודה (כל העובדים)</div></div>
+      <div class="kpi"><div class="v">${k.shifts}</div><div class="l">ימי עבודה (כל הטבחים)</div></div>
       <div class="kpi"><div class="v">${k.closings}</div><div class="l">סגירות</div></div></div>
     <p class="hint">${k.actual_share ? `ב-${k.actual_share} משמרות הוזנו שעות בפועל. בשאר` : "החישוב"} לפי השעות המתוכננות בסידור. אפשר להזין שעות בפועל בלחיצה על משמרת בדף הסידור.</p>`;
   const weeks = barList(STATS.per_week.map(w => ({l:fmtDate(w.week_start).slice(0,5), v:w.hours})));
   const wds = barList(STATS.by_weekday.map(d => ({l:WD[d.weekday], v:d.hours})));
-  const table = `<div class="panel" style="margin-top:16px"><h2>לפי עובד</h2><div style="overflow-x:auto">
-    <table class="sumtab"><thead><tr><th>עובד</th><th>ימי עבודה</th><th>שעות</th><th>סגירות</th></tr></thead><tbody>
+  const table = `<div class="panel" style="margin-top:16px"><h2>לפי טבח</h2><div style="overflow-x:auto">
+    <table class="sumtab"><thead><tr><th>טבח</th><th>ימי עבודה</th><th>שעות</th><th>סגירות</th></tr></thead><tbody>
     ${STATS.employees.map(e => `<tr><td><b>${esc(e.name)}</b></td><td>${e.days}</td><td>${e.hours}</td><td>${e.closings}</td></tr>`).join("")}
     </tbody></table></div></div>`;
   return head + kpis + `<div class="two"><div class="panel"><h2>שעות מטבח לפי שבוע</h2>${weeks}</div>
@@ -722,7 +727,7 @@ function stationsView(){
     <button class="icon" aria-label="שינוי שם" onclick="renameStation(${s.id})">✎</button>
     <button class="icon danger" aria-label="מחיקה" onclick="delStation(${s.id})">✕</button></li>`).join("");
   const next = PALETTE[S.stations.length % PALETTE.length];
-  return `<p class="intro">עמדות הן אופציונליות. אם לא משנה מי עומד באיזו עמדה, אפשר לדלג על הדף הזה. אם מגדירים עמדות, אפשר לקבוע בטמפלט שמגיע עובד לעמדה מסוימת, והסידור ישבץ רק מי שעובד בה.</p>
+  return `<p class="intro">עמדות הן אופציונליות. אם לא משנה מי עומד באיזו עמדה, אפשר לדלג על הדף הזה. אם מגדירים עמדות, אפשר לקבוע בטמפלט שמגיע טבח לעמדה מסוימת, והסידור ישבץ רק מי שעובד בה.</p>
   <div class="panel">
     ${S.stations.length ? `<ul class="st-list">${list}</ul>` : `<div class="empty" style="margin-bottom:14px">עוד אין עמדות. הוסף את הראשונה.</div>`}
     <div class="row">
@@ -768,11 +773,11 @@ function employeesView(){
       </div>
     </article>`;
   }).join("");
-  return `<p class="intro">לכל עובד מסמנים באילו עמדות הוא עובד (לחיצה מחליפה בין לא עובד בה, משנית וראשית ★), ובאילו ימים ושעות הוא יכול לעבוד. הסידור ישבץ אותו רק בתוך השעות האלה. מקסימום ריק פירושו בלי הגבלה.</p>
+  return `<p class="intro">לכל טבח מסמנים באילו עמדות הוא עובד (לחיצה מחליפה בין לא עובד בה, משנית וראשית ★), ובאילו ימים ושעות הוא יכול לעבוד. הסידור ישבץ אותו רק בתוך השעות האלה. מקסימום ריק פירושו בלי הגבלה.</p>
   <div class="panel" style="margin-bottom:18px"><div class="row">
-    <input type="text" id="emp-name" placeholder="שם העובד" onkeydown="if(event.key==='Enter')addEmp()">
-    <button class="btn primary" onclick="addEmp()">הוספת עובד</button></div></div>
-  ${S.employees.length ? `<div class="emps">${cards}</div>` : `<div class="empty">עוד אין עובדים. הוסף את הראשון למעלה.</div>`}`;
+    <input type="text" id="emp-name" placeholder="שם הטבח" onkeydown="if(event.key==='Enter')addEmp()">
+    <button class="btn primary" onclick="addEmp()">הוספת טבח</button></div></div>
+  ${S.employees.length ? `<div class="emps">${cards}</div>` : `<div class="empty">עוד אין טבחים. הוסף את הראשון למעלה.</div>`}`;
 }
 function addEmp(){
   act(() => api("POST","/api/employees",{name:$("#emp-name").value})).then(() => { const i = $("#emp-name"); if (i) i.focus(); });
@@ -784,7 +789,7 @@ function cycleLevel(eid, sid, cur){
 }
 function renameEmp(id){
   const e = S.employees.find(x => x.id === id);
-  modal({title:"שינוי שם עובד", html:`<div class="field"><label>שם</label><input type="text" id="rn" value="${esc(e.name)}"></div>`,
+  modal({title:"שינוי שם טבח", html:`<div class="field"><label>שם</label><input type="text" id="rn" value="${esc(e.name)}"></div>`,
     onOk: async () => { await api("PUT", `/api/employees/${id}`, {name:$("#rn").value}); await load(); }});
 }
 function moveEmpDialog(id){
@@ -801,7 +806,7 @@ function moveEmpDialog(id){
 }
 async function delEmp(id){
   const e = S.employees.find(x => x.id === id);
-  if (!await confirmBox("מחיקת עובד", `למחוק את ${e.name} עם כל האילוצים שלו? אם הוא רק לא עובד כרגע, עדיף לסמן "לא פעיל".`)) return;
+  if (!await confirmBox("מחיקת טבח", `למחוק את ${e.name} עם כל האילוצים שלו? אם הוא רק לא עובד כרגע, עדיף לסמן "לא פעיל".`)) return;
   act(() => api("DELETE", `/api/employees/${id}`), "נמחק");
 }
 function toggleAvail(eid, wd, on){
@@ -824,14 +829,15 @@ function restaurantView(){
       <div class="field"><label for="r-name">שם</label><input type="text" id="r-name" value="${esc(r.name)}"></div>
       <div class="field"><label for="r-slot">יחידת זמן לשיבוץ</label><select id="r-slot">${slotOptions(r.slot_minutes)}</select></div>
       <div class="field"><label for="r-close">זמן סגירה אחרי שעת הסגירה (דקות)</label><input type="number" id="r-close" min="0" max="240" value="${r.closing_minutes ?? 30}"></div>
-      <div class="field"><label for="r-type">סוג הצוות הזה</label><select id="r-type">${staffOptions(r.staff_type)}</select></div>
     </div>
-    <p class="hint"><b>לצוות נפרד (למשל פלור ליד המטבח) לוחצים "+ צוות חדש" למעלה</b>, ולא משנים כאן. השדה כאן משנה את הצוות הנוכחי עצמו. מטבח: הסידור מאזן שעות בין העובדים על פני 4 שבועות. פלור: בלי איזון, כל עובד משובץ רק לפי מה שנתן, והמערכת בוחרת מבין הזמינים.</p>
+    <p class="hint">סוג הצוות: <b>${r.staff_type === "floor" ? "פלור" : "מטבח"}</b>. ${r.staff_type === "floor"
+      ? "בלי איזון: כל עובד משובץ רק לפי מה שנתן, והמערכת בוחרת מבין הזמינים."
+      : "הסידור מאזן שעות בין הטבחים על פני 4 שבועות."} הסוג נקבע כשיוצרים צוות. לצוות נוסף (למשל פלור) לוחצים "+ צוות חדש" למעלה.</p>
     <div class="row">
       <button class="btn primary" onclick="saveRestaurant()">שמירת פרטים</button>
     </div></div>
   <div class="panel"><h2>העברה למסעדה אחרת</h2>
-    <p class="muted">כל ההגדרות (עמדות, עובדים, שבוע רגיל, תבניות וחריגים) נשמרות בקובץ אחד. בייבוא בוחרים מה להביא: במסעדה חדשה בדרך כלל לוקחים את המבנה בלי העובדים. במסעדה חדשה אפשר להתחיל מהקובץ או מאפס.</p>
+    <p class="muted">כל ההגדרות (עמדות, טבחים, שבוע רגיל, תבניות וחריגים) נשמרות בקובץ אחד. בייבוא בוחרים מה להביא: במסעדה חדשה בדרך כלל לוקחים את המבנה בלי הטבחים. במסעדה חדשה אפשר להתחיל מהקובץ או מאפס.</p>
     <div class="row">
       <button class="btn" onclick="exportRestaurantFile()">ייצוא לקובץ</button>
       <button class="btn" onclick="importDialog()">ייבוא מקובץ</button>
@@ -887,7 +893,7 @@ function restoreDialog(url){
 
 /* ---------- actions: restaurant ---------- */
 function saveRestaurant(){
-  act(() => api("PUT", `/api/restaurants/${S.restaurant.id}`, {name:$("#r-name").value, slot_minutes:+$("#r-slot").value, closing_minutes:+$("#r-close").value, staff_type:$("#r-type").value}), "הפרטים נשמרו");
+  act(() => api("PUT", `/api/restaurants/${S.restaurant.id}`, {name:$("#r-name").value, slot_minutes:+$("#r-slot").value, closing_minutes:+$("#r-close").value}), "הפרטים נשמרו");
 }
 async function delRestaurant(){
   if (!await confirmBox("מחיקת המסעדה", `למחוק את "${S.restaurant.name}" עם כל ההגדרות שלה? אי אפשר לבטל.`)) return;
@@ -896,7 +902,7 @@ async function delRestaurant(){
 function duplicateDialog(){
   modal({title:"שכפול המסעדה", okText:"שכפול",
     html:`<div class="field"><label>שם למסעדה החדשה</label><input type="text" id="dup-name" value="${esc(S.restaurant.name)} - עותק"></div>
-          <label class="row"><input type="checkbox" id="dup-emps"> להעתיק גם את העובדים</label>
+          <label class="row"><input type="checkbox" id="dup-emps"> להעתיק גם את הטבחים</label>
           <label class="row"><input type="checkbox" id="dup-dates"> להעתיק גם חריגים לפי תאריך</label>
           <p class="hint">עמדות, שבוע רגיל ותבניות מועתקים תמיד.</p>`,
     onOk: async () => { await api("POST", `/api/restaurants/${S.restaurant.id}/duplicate`, {name:$("#dup-name").value, include_dates:$("#dup-dates").checked, include_employees:$("#dup-emps").checked}); await load(); toast("המסעדה שוכפלה"); }});
@@ -905,7 +911,7 @@ function importDialog(){
   modal({title:"ייבוא מקובץ", okText:"ייבוא",
     html:`<div class="field"><label>קובץ ייצוא (.json)</label><input type="file" id="imp-file"></div>
           <div class="field"><label>שם למסעדה (ריק = השם מהקובץ)</label><input type="text" id="imp-name"></div>
-          <label class="row"><input type="checkbox" id="imp-emps"> לייבא גם את העובדים</label>
+          <label class="row"><input type="checkbox" id="imp-emps"> לייבא גם את הטבחים</label>
           <label class="row"><input type="checkbox" id="imp-dates"> לייבא גם חריגים לפי תאריך</label>`,
     onOk: async () => {
       const f = $("#imp-file").files[0];
