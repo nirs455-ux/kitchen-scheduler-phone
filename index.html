@@ -419,7 +419,7 @@ function datesView(){
     hol = `<p class="hint">הדפדפן הזה לא תומך בלוח העברי, אז החגים לא מופיעים אוטומטית. אפשר להוסיף חריג לכל תאריך ידנית.</p>`;
   } else if (S.holidays.length){
     hol = S.holidays.map((h,i) => `<div class="hol"><span>${WD[wdOf(h.date)]} ${fmtDate(h.date).slice(0,5)}</span><span class="k">${h.kind}</span><b>${esc(h.name)}</b>
-      ${h.has_plan?`<span class="done">מוגדר</span>`:`<button class="btn small" onclick="holDialog(${i})">הגדרה</button>`}</div>`).join("");
+      ${h.has_plan?`<span class="done">מוגדר</span>`:`<span class="row" style="gap:6px"><button class="btn small" onclick="closeHoliday(${i})">סגור</button><button class="btn small" onclick="holDialog(${i})">הגדרה</button></span>`}</div>`).join("");
   } else hol = `<p class="hint">אין חגים בחודשיים הקרובים.</p>`;
 
   return `<p class="intro">חריג מחליף את היום הרגיל בתאריך מסוים: חג, ערב חג, אירוע או סגירה. חריג חדש מתחיל כהעתק של היום הרגיל, ומשנים בו רק את מה שצריך.</p>
@@ -469,11 +469,13 @@ function scheduleView(){
   let head = "";
   if (blockers.length) head += `<div class="panel missing"><h2>כדי לבנות סידור חסר:</h2>${list(blockers)}</div>`;
   if (warns.length) head += `<div class="panel missing"><h2>שים לב</h2>${list(warns)}</div>`;
-  const hols = openHolidays(WEEK, addDays(WEEK, 6));
-  if (hols.length) head += `<div class="panel missing"><h2>חגים בשבוע הזה שלא הוגדרו</h2>
-    <p class="hint">בלי הגדרה, ימים אלה ישובצו כמו יום רגיל. אפשר להגדיר חריג (סגור, שעות אחרות או תבנית) לפני בניית הסידור.</p>
-    <ul>${hols.map(h => `<li>${WD[wdOf(h.date)]} ${fmtDate(h.date).slice(0,5)}: <b>${esc(h.name)}</b> <span class="hint">(${h.kind})</span>
-      <button class="btn small" onclick="holDialog(${S.holidays.indexOf(h)})">הגדרה</button></li>`).join("")}</ul></div>`;
+  // חגים ב-3 השבועות הקרובים וגם בשבוע שמוצג, שעוד לא הוגדרו
+  const seen = new Set();
+  const hols = [...openHolidays(S.today, addDays(S.today, 21)), ...openHolidays(WEEK, addDays(WEEK, 6))]
+    .filter(h => !seen.has(h.date) && seen.add(h.date)).sort((a, b) => a.date < b.date ? -1 : 1);
+  if (hols.length) head += `<div class="panel missing"><h2>חגים קרובים שעוד לא הוגדרו</h2>
+    <p class="hint">בלי הגדרה, ימים אלה ישובצו כמו יום רגיל. "סגור" קובע שהמסעדה סגורה ביום הזה, ו"הגדרה" מאפשרת שעות אחרות או תבנית.</p>
+    <ul>${hols.map(h => holItem(h)).join("")}</ul></div>`;
   if (head) head = `<div style="margin-bottom:16px">${head}</div>`;
 
   let stat = "";
@@ -887,6 +889,19 @@ function applyPresetDialog(id){
     onOk: async () => { await api("POST", `/api/plans/${id}/apply-preset`, {preset_id:+$("#ap-p").value}); await load(); toast("התבנית הוחלה"); }});
 }
 function holDialog(i){ const h = S.holidays[i]; dateDialog(h.date, h.name); }
+function holItem(h){
+  const i = S.holidays.indexOf(h);
+  return `<li>${WD[wdOf(h.date)]} ${fmtDate(h.date).slice(0,5)}: <b>${esc(h.name)}</b> <span class="hint">(${h.kind})</span>
+    <button class="btn small" onclick="closeHoliday(${i})">סגור</button> <button class="btn small" onclick="holDialog(${i})">הגדרה</button></li>`;
+}
+function closeHoliday(i){
+  const h = S.holidays[i];
+  act(async () => {
+    const r = await api("POST", "/api/dates", {date:h.date, name:h.name});
+    await api("PUT", `/api/plans/${r.id}`, {is_open:false});
+    SCH = null;
+  }, `${h.name} ${fmtDate(h.date).slice(0,5)}: סגור`);
+}
 function dateDialog(d, name){
   modal({title:"חריג לתאריך", okText:"יצירה",
     html:`<div class="field"><label>תאריך</label><input type="date" id="dt-date" value="${d||""}" min="${S.today}"></div>
