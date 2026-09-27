@@ -322,10 +322,12 @@ const LocalApi = (() => {
         for (const a of e.availability) this.avail.set(`${e.id}|${a.weekday}`, a);
       }
       this.finalClose = {};
+      this.dayFirst = {};   // שעת ההגעה הראשונה בכל יום = משמרת הפתיחה
       for (let i = 0; i < 7; i++) {
         const iso = addDays(weekStart, i);
-        const [plan] = planForDate(rid, iso);
+        const [plan, reqs] = planForDate(rid, iso);
         this.finalClose[iso] = plan.is_open ? planClose(plan) : null;
+        if (reqs.length) this.dayFirst[iso] = reqs.map(q => q.start_time).sort((a, b) => toMin(a) - toMin(b))[0];
       }
     }
     // רק משמרת שמסתיימת בשעת הסגירה של סוף היום יכולה לסגור
@@ -358,6 +360,11 @@ const LocalApi = (() => {
       if (!a) issues.push([3, emp.week_submitted ? `לא זמין השבוע ביום ${WEEKDAYS[wd]}` : `לא עובד ביום ${WEEKDAYS[wd]}`]);
       else if (!covers(a, seat.start_time, this.requiredEnd(seat)))
         issues.push([2, `זמין רק ${a.start_time}-${a.end_time}`]);
+      // בקשות לשבוע: רק פתיחה (וגם לא סוגר) / לא לסגור
+      if (a && a.mode === "open" && seat.start_time !== this.dayFirst[seat.plan_date])
+        issues.push([3, `ביקש ביום ${WEEKDAYS[wd]} רק פתיחה`]);
+      if (a && (a.mode === "noclose" || a.mode === "open") && seat.end_time)
+        issues.push([3, `ביקש ביום ${WEEKDAYS[wd]} לא לסגור`]);
       return issues;
     }
   }
@@ -441,7 +448,7 @@ const LocalApi = (() => {
     const ready = {employees: emps.length, with_availability: emps.filter(e => e.availability.length).length,
       needed: days.reduce((n, d) => n + d.needed, 0)};
     const weekAvail = emps.map(e => ({id: e.id, name: e.name, submitted: e.week_submitted,
-      max_shifts: e.max_shifts_week, days: e.availability.map(a => ({weekday: a.weekday, start_time: a.start_time, end_time: a.end_time}))}));
+      max_shifts: e.max_shifts_week, days: e.availability.map(a => ({weekday: a.weekday, start_time: a.start_time, end_time: a.end_time, mode: a.mode || "any"}))}));
     return {week_start: ws, built: !!week, built_at: week ? week.built_at : null, days, seats, summary, ready,
       week_avail: weekAvail, staff_type: getRestaurant(rid).staff_type || "kitchen"};
   }
@@ -749,7 +756,8 @@ const LocalApi = (() => {
       if (!(Number.isInteger(wd) && wd >= 0 && wd < 7)) throw new ApiError("יום לא תקין");
       const start = checkTime(d.start_time, "משעה"), end = checkTime(d.end_time, "עד שעה");
       if (start === end) throw new ApiError(`${WEEKDAYS[wd]}: שעת ההתחלה והסיום זהות`);
-      days.push({employee_id: eid, week_start: ws, weekday: wd, start_time: start, end_time: end});
+      const mode = ["open", "noclose"].includes(d.mode) ? d.mode : "any";
+      days.push({employee_id: eid, week_start: ws, weekday: wd, start_time: start, end_time: end, mode});
     }
     DB().week_subs.push({employee_id: eid, week_start: ws, max_shifts: maxS});
     DB().week_avail.push(...days);

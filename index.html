@@ -144,6 +144,7 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin:14px 0 
 .av.off .d{color:var(--muted)}
 .av .off-txt{color:var(--muted);font-size:.92rem}
 .walist{list-style:none;margin:8px 0 0;padding:0}
+.av{flex-wrap:wrap}
 .walist li{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--steel)}
 .walist li .btn{margin-inline-start:auto}
 
@@ -525,12 +526,13 @@ function scheduleView(){
 }
 
 /* ---------- זמינות לשבוע ---------- */
+const MODES = {open: "רק פתיחה", noclose: "לא לסגור"};
 function weekAvailPanel(floor){
   const list = SCH.week_avail || [];
   if (!list.length) return "";
   const n = list.filter(e => e.submitted).length;
   const desc = e => !e.submitted ? "זמינות קבועה"
-    : (e.days.length ? e.days.map(d => `${WD[d.weekday]} ${d.start_time}-${d.end_time}`).join(", ") : "לא עובד השבוע")
+    : (e.days.length ? e.days.map(d => `${WD[d.weekday]} ${d.start_time}-${d.end_time}${MODES[d.mode] ? ` (${MODES[d.mode]})` : ""}`).join(", ") : "לא עובד השבוע")
       + (e.max_shifts != null ? `, עד ${e.max_shifts} משמרות` : "");
   return `<details class="panel" style="margin-bottom:16px" ${floor && n < list.length ? "open" : ""}>
     <summary style="margin:0">זמינות לשבוע הזה: ${n} מתוך ${list.length} עודכנו</summary>
@@ -548,7 +550,9 @@ function weekAvailDialog(eid){
     const a = byWd[i], p = S.weekdays.find(x => x.weekday === i);
     const st = a ? a.start_time : (p && p.open_time) || "12:00", en = a ? a.end_time : (p && p.close_time) || "23:00";
     return `<div class="av" data-wd="${i}"><label class="switch"><input type="checkbox" class="wa-on" aria-label="זמין ביום ${n}" ${a?"checked":""}></label>
-      <span class="d">${n}</span>${timeSel(st, "wa-s", null, "משעה")}<span>עד</span>${timeSel(en, "wa-e", null, "עד שעה")}</div>`;
+      <span class="d">${n}</span>${timeSel(st, "wa-s", null, "משעה")}<span>עד</span>${timeSel(en, "wa-e", null, "עד שעה")}
+      <select class="wa-m" aria-label="בקשה ליום ${n}">${[["any","כל משמרת"],["open","רק פתיחה"],["noclose","לא לסגור"]].map(([v,l]) =>
+        `<option value="${v}" ${(a && a.mode || "any")===v?"selected":""}>${l}</option>`).join("")}</select></div>`;
   }).join("");
   const ov = modal({title:`${emp.name}: זמינות ל-${fmtDate(WEEK).slice(0,5)} עד ${fmtDate(addDays(WEEK,6)).slice(0,5)}`,
     html:`<p class="hint">מסמנים רק את הימים שהעובד נותן בשבוע הזה. זה לא משנה את הזמינות הקבועה שלו.</p>
@@ -557,7 +561,8 @@ function weekAvailDialog(eid){
       ${w.submitted ? `<button class="btn small" style="margin-top:10px" id="wa-reset">חזרה לזמינות הקבועה</button>` : ""}`,
     onOk: async (ov) => {
       const days = [...ov.querySelectorAll(".av")].filter(r => r.querySelector(".wa-on").checked).map(r => ({
-        weekday: +r.dataset.wd, start_time: r.querySelector(".wa-s").value, end_time: r.querySelector(".wa-e").value}));
+        weekday: +r.dataset.wd, start_time: r.querySelector(".wa-s").value, end_time: r.querySelector(".wa-e").value,
+        mode: r.querySelector(".wa-m").value}));
       await api("PUT", `/api/week-availability/${eid}`, {week_start: WEEK, submitted: true, days, max_shifts: ov.querySelector("#wa-max").value});
       await loadSchedule(); toast("הזמינות לשבוע נשמרה");
     }});
