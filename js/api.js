@@ -364,6 +364,26 @@ const LocalApi = (() => {
     return [(spanMin(q.start_time, end) + (q.end_time ? cleanup : 0)) / 60, false];
   }
 
+  // שעות ב-3 השבועות שלפני ws, לכל טבח. weeks = שבועות שבהם עבד (שבוע בלי משמרות = חופש, לא נספר)
+  function historyBefore(rid, ws, cleanup) {
+    const out = new Map();
+    for (let k = 1; k <= 3; k++) {
+      const w = DB().schedule_weeks.find(x => x.restaurant_id === rid && x.week_start === addDays(ws, -7 * k));
+      if (!w) continue;
+      const perEmp = new Map();
+      for (const q of DB().schedule_seats) {
+        if (q.week_id !== w.id || !q.employee_id) continue;
+        perEmp.set(q.employee_id, (perEmp.get(q.employee_id) || 0) + seatHours(q, cleanup)[0] * 60);
+      }
+      for (const [eid, min] of perEmp) {
+        const h = out.get(eid) || {minutes: 0, weeks: 0};
+        h.minutes += min; h.weeks += 1;
+        out.set(eid, h);
+      }
+    }
+    return out;
+  }
+
   function cleanupOf(rid) {
     const cm = getRestaurant(rid).closing_minutes;
     return cm === null || cm === undefined ? 30 : cm;
@@ -392,10 +412,12 @@ const LocalApi = (() => {
     }
     const emps = loadEmployees(rid).filter(e => e.is_active);
     const cleanup = cleanupOf(rid);
+    const hist = historyBefore(rid, ws, cleanup);
     const summary = emps.map(e => {
       const mine = seats.filter(q => q.employee_id === e.id);
-      return {id: e.id, name: e.name, shifts: mine.length,
-        hours: round1(mine.reduce((n, q) => n + seatHours(q, cleanup)[0], 0)),
+      const hours = mine.reduce((n, q) => n + seatHours(q, cleanup)[0], 0);
+      return {id: e.id, name: e.name, shifts: mine.length, hours: round1(hours),
+        hours4: round1(hours + ((hist.get(e.id) || {}).minutes || 0) / 60),
         closings: mine.filter(q => q.end_time).length, max_shifts: e.max_shifts_week};
     });
     const ready = {employees: emps.length, with_availability: emps.filter(e => e.availability.length).length,
@@ -718,6 +740,7 @@ const LocalApi = (() => {
     }
     if (!seats.length) throw new ApiError("אין מה לשבץ בשבוע הזה: לא הוגדרו משמרות באף יום.");
     const ctx = new Ctx(rid, ws);
+    ctx.history = historyBefore(rid, ws, ctx.cleanup);
     for (const seat of seats) seat.close_end = ctx.closeEnd(seat);
     const fixed = {}, used = new Set();
     const validEmps = new Set(ctx.emps.map(e => e.id));
@@ -764,6 +787,7 @@ const LocalApi = (() => {
     const ctx = new Ctx(rid, week.week_start);
     const others = Store.where("schedule_seats", q => q.week_id === seat.week_id && q.id !== seatId && q.employee_id);
     const [s0, s1] = ctx.interval(seat);
+    const hist = historyBefore(rid, week.week_start, ctx.cleanup);
     const out = ctx.emps.map(e => {
       const issues = ctx.staticIssues(e, seat);
       const mine = others.filter(q => q.employee_id === e.id);
@@ -780,6 +804,8 @@ const LocalApi = (() => {
       issues.sort((a, b) => cmp([b[0], a[0]], [b[1], a[1]]));
       return {id: e.id, name: e.name, level, shifts: mine.length, closings: mine.filter(q => q.end_time).length,
         hours: round1(mine.reduce((n, q) => n + seatHours(q, ctx.cleanup)[0], 0)),
+        hours4: round1(Store.where("schedule_seats", q => q.week_id === seat.week_id && q.employee_id === e.id)
+          .reduce((n, q) => n + seatHours(q, ctx.cleanup)[0], 0) + ((hist.get(e.id) || {}).minutes || 0) / 60),
         issues: issues.map(x => x[1]), score: issues.reduce((n, x) => n + x[0], 0), current: e.id === seat.employee_id};
     });
     out.sort((a, b) => cmp([a.score, b.score], [a.level === "secondary" ? 1 : 0, b.level === "secondary" ? 1 : 0],

@@ -1,13 +1,15 @@
-// שיבוץ שבועי בלי OR-Tools: אותם אילוצים ואותה פונקציית ניקוד כמו solve_week בגרסת המחשב,
+// שיבוץ שבועי בלי OR-Tools: אותם אילוצים כמו solve_week בגרסת המחשב,
 // ובמקום פותר CP-SAT - בנייה חמדנית ואחריה חיפוש מקומי (simulated annealing) לכמה שניות.
 //
 // אילוצים קשיחים: רק מי שעובד בעמדה וזמין בשעות, משמרת אחת ביום לכל טבח, בלי חפיפה בין ימים,
 // מקסימום משמרות, סוגר רק מי שזמין עד הסגירה, ולא יותר סוגרים ממה שהוגדר ליום.
 // הניקוד (גבוה = טוב), לפי סדר החשיבות:
 //   100000 לכל משמרת מאוישת, 10000 לכל סוגר, 2000 לכל טבח שסוגר לפחות פעם,
-//   -5 לכל דקה של פער בין הכי הרבה שעות להכי מעט, -150 על כל סגירה מעבר לחלק ההוגן,
-//   -500 על סגירה שנייה בסופ"ש, -300 על סגירה ביומיים ברצף, -50 לפער בסגירות,
-//   +10 לכל שעה שהסוגר הגיע אחרי תחילת היום, -50 על עמדה משנית, -20 לפער במשמרות.
+//   -1500 על סגירה שנייה בסופ"ש, -1200 על סגירה ביומיים ברצף (חזקים מאיזון השעות),
+//   -5 לכל דקה של פער בשעות לשבוע עבודה (4 שבועות אחרונים, בלי שבועות שהטבח לא עבד בהם),
+//   +30 לכל שעה שהסוגר הגיע אחרי תחילת היום (מי שמגיע מאוחר סוגר יותר - השעות שלו ממילא פחותות),
+//   -50 על עמדה משנית, -20 לפער במשמרות, ורק כשובר שוויון: -15 על סגירה מעבר לחלק ההוגן, -5 לפער בסגירות.
+// שינויים לעומת המחשב: איזון שעות על 4 שבועות, איזון סגירות חלש ועדיפות חזקה יותר למאחרים.
 const Solver = (() => {
   const toMin = t => { const [h, m] = t.split(":"); return +h * 60 + +m; };
   const spanMin = (a, b) => { const d = toMin(b) - toMin(a); return d > 0 ? d : d + 1440; };
@@ -78,6 +80,10 @@ const Solver = (() => {
       cap[k] = max === null || max === undefined ? Infinity : Math.max(0, max - fixedCount[k]);
     });
     const cleanup = ctx.cleanup;
+    // היסטוריה: דקות ומספר שבועות עבודה ב-3 השבועות הקודמים (שבוע בלי משמרות = חופש, לא נספר)
+    const hist = ctx.history || new Map();
+    const baseMin = emps.map(e => (hist.get(e.id) || {}).minutes || 0);
+    const baseWeeks = emps.map(e => (hist.get(e.id) || {}).weeks || 0);
 
     const shifts = new Int32Array(E), closes = new Int32Array(E), hours = new Int32Array(E),
       wk = new Int32Array(E), mask = new Int32Array(E);
@@ -96,23 +102,25 @@ const Solver = (() => {
           mask[k] |= 1 << dayIdx[i];
         }
       }
-      let once = 0, maxH = 0, minH = 20000, maxS = 0, minS = 20, maxC = 0, minC = 20, pen = 0;
+      let once = 0, maxH = 0, minH = 1e9, maxS = 0, minS = 20, maxC = 0, minC = 20, pen = 0;
       for (let k = 0; k < E; k++) {
-        if (hours[k] > maxH) maxH = hours[k];
+        const avg = (baseMin[k] + hours[k]) / (baseWeeks[k] + 1);
+        if (avg > maxH) maxH = avg;
         if (shifts[k] > maxS) maxS = shifts[k];
         if (closes[k] > maxC) maxC = closes[k];
         if (inMin[k]) {
           if (shifts[k] < minS) minS = shifts[k];
           if (closes[k] < minC) minC = closes[k];
         }
-        if (inMinH[k] && hours[k] < minH) minH = hours[k];
+        if (inMinH[k] && avg < minH) minH = avg;
         if (hasW[k]) {
           if (closes[k]) once++;
-          pen += 150 * Math.max(0, closes[k] - fair) + 500 * Math.max(0, wk[k] - 1) + 300 * popcount(mask[k] & (mask[k] >> 1));
+          pen += 15 * Math.max(0, closes[k] - fair) + 1500 * Math.max(0, wk[k] - 1) + 1200 * popcount(mask[k] & (mask[k] >> 1));
         }
       }
-      return 100000 * filled + 10000 * closed + 2000 * once - 5 * (maxH - minH) - pen - 50 * (maxC - minC)
-        + 10 * late - 50 * sec - 20 * (maxS - minS);
+      if (minH === 1e9) minH = maxH;
+      return 100000 * filled + 10000 * closed + 2000 * once - 5 * (maxH - minH) - pen - 5 * (maxC - minC)
+        + 30 * late - 50 * sec - 20 * (maxS - minS);
     }
     return {n, E, emps, eIdx, fx, isFixed, cand, candSet, conf, gkey, canClose, groups, hoursLate, cap, score};
   }

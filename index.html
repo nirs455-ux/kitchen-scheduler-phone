@@ -499,11 +499,11 @@ function scheduleView(){
     return `<div class="sday">${title}${body}</div>`;
   }).join("");
 
-  const sum = SCH.built && SCH.summary.length ? `<div class="panel" style="margin-top:18px"><h2>סיכום לפי טבח</h2>
-    <table class="sumtab"><thead><tr><th>טבח</th><th>משמרות</th><th>שעות</th><th>סגירות</th></tr></thead><tbody>
+  const sum = SCH.built && SCH.summary.length ? `<div class="panel" style="margin-top:18px"><h2>סיכום לפי טבח</h2><p class="hint">הסידור מאזן שעות על פני 4 שבועות (השבוע ו-3 שקודמים לו). שבוע שטבח לא עבד בו בכלל נחשב חופש ולא מפוצה.</p>
+    <table class="sumtab"><thead><tr><th>טבח</th><th>משמרות</th><th>שעות</th><th>סגירות</th><th>שעות ב-4 שבועות</th></tr></thead><tbody>
     ${SCH.summary.map(e => `<tr><td>${esc(e.name)}</td>
       <td class="${e.max_shifts!=null && e.shifts>e.max_shifts?"over":""}">${e.shifts}${e.max_shifts!=null?` מתוך ${e.max_shifts}`:""}</td>
-      <td>${e.hours}</td><td>${e.closings}</td></tr>`).join("")}
+      <td>${e.hours}</td><td>${e.closings}</td><td>${e.hours4}</td></tr>`).join("")}
     </tbody></table></div>` : "";
   return nav + head + stat + `<div class="sched">${days}</div>` + sum;
 }
@@ -528,7 +528,7 @@ async function seatDialog(id){
   const q = data.seat;
   const rows = data.candidates.map(c => `<div class="cand ${c.current?"cur":""}">
       <div class="info"><div class="nm">${esc(c.name)} ${c.level==="primary"?'<span class="tag">ראשית</span>':c.level==="secondary"?'<span class="tag">משנית</span>':""}</div>
-        <div class="meta">השבוע: ${c.shifts} משמרות, ${c.hours} שעות, ${c.closings} סגירות</div>
+        <div class="meta">השבוע: ${c.shifts} משמרות, ${c.hours} שעות, ${c.closings} סגירות. 4 שבועות: ${c.hours4} שעות</div>
         ${c.issues.length ? c.issues.map(t => `<div class="iss">${esc(t)}</div>`).join("") : `<div class="ok">מתאים</div>`}</div>
       ${c.current ? `<span class="done">משובץ</span>` : `<button class="btn small ${c.issues.length?"":"primary"}" onclick="assignSeat(${id},${c.id})">שיבוץ</button>`}
     </div>`).join("");
