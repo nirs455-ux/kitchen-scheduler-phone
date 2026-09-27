@@ -466,7 +466,7 @@ const LocalApi = (() => {
 
   route("GET", "/api/state", () => {
     const rid = activeRid();
-    const restaurants = [...DB().restaurants].sort((a, b) => a.id - b.id).map(r => ({id: r.id, name: r.name}));
+    const restaurants = [...DB().restaurants].sort((a, b) => a.id - b.id).map(r => ({id: r.id, name: r.name, staff_type: r.staff_type || "kitchen"}));
     if (!rid) return {restaurant: null, restaurants, weekday_names: WEEKDAYS};
     ensureWeekdays(rid);
     const plans = loadPlans(rid);
@@ -698,6 +698,18 @@ const LocalApi = (() => {
     deleteEmployee(eid);
     return {ok: true};
   });
+  // העברת עובד לצוות (מסעדה) אחר. העמדות לא עוברות, כי לכל צוות עמדות משלו. הזמינות עוברת איתו.
+  route("POST", "/api/employees/<int>/move", ([eid], b) => {
+    const e = getEmployee(eid, requireRid());
+    const target = getRestaurant(parseInt(b.restaurant_id, 10));
+    if (target.id === e.restaurant_id) return {ok: true};
+    const there = Store.where("employees", x => x.restaurant_id === target.id);
+    if (there.some(x => x.name === e.name)) throw new ApiError(`ב"${target.name}" כבר יש עובד בשם ${e.name}`);
+    Store.remove("employee_stations", x => x.employee_id === eid);
+    Object.assign(e, {restaurant_id: target.id, sort_order: there.reduce((m, x) => Math.max(m, x.sort_order), -1) + 1});
+    return {ok: true};
+  });
+
   route("PUT", "/api/employees/<int>/stations", ([eid], b) => {
     const rid = requireRid();
     getEmployee(eid, rid);

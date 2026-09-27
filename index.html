@@ -32,7 +32,13 @@ h1,h2,h3{font-family:var(--head);font-weight:400;margin:0;line-height:1.2}
 .rail h1{font-size:1.45rem}
 .rail .spacer{flex:1}
 .rail select{background:#34464F;border:1px solid #4B5F69;color:#fff;border-radius:6px;padding:6px 10px;min-width:180px}
-.tabs{display:flex;gap:2px;background:var(--rail);padding:0 16px;overflow-x:auto}
+.teams{display:flex;gap:8px;flex-wrap:wrap;background:var(--rail);padding:0 16px 12px}
+.team{background:#34464F;border:1px solid #4B5F69;color:#DCE4E8;border-radius:999px;padding:6px 16px;cursor:pointer;font-weight:700;display:inline-flex;gap:6px;align-items:baseline}
+.team small{font-weight:600;color:#9FB0B8;font-size:.78rem}
+.team.on{background:#fff;border-color:#fff;color:var(--rail)}
+.team.on small{color:var(--muted)}
+.team.add{background:none;border-style:dashed;color:#B9C6CC}
+.tabs{display:flex;gap:2px;background:var(--rail);padding:0 16px;overflow-x:auto;border-top:1px solid #34464F}
 .tabs button{background:none;border:0;color:#B9C6CC;padding:10px 16px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;font-weight:600}
 .tabs button.on{color:#fff;border-bottom-color:#7FB0EE}
 main{max-width:1240px;margin:0 auto;padding:22px 16px 60px}
@@ -205,7 +211,6 @@ details summary{cursor:pointer;color:var(--muted);font-weight:600;margin:14px 0 
 
 @media (max-width:560px){
   .tickets{grid-template-columns:1fr}
-  .rail select{min-width:0;max-width:60vw}
   .ticket{padding-inline:12px}
   .hol{grid-template-columns:90px 1fr auto}
   .hol .k{display:none}
@@ -319,14 +324,9 @@ function render(){
   app.innerHTML = `
     <header class="rail">
       <h1>סידור עבודה</h1>
-      <span class="spacer"></span>
-      <label class="row" style="gap:8px"><span class="muted" style="color:#B9C6CC">מסעדה</span>
-        <select onchange="switchRestaurant(this.value)">
-          ${S.restaurants.map(r => `<option value="${r.id}" ${r.id===S.restaurant.id?"selected":""}>${esc(r.name)}</option>`).join("")}
-          <option value="new">+ מסעדה חדשה…</option>
-        </select>
-      </label>
     </header>
+    <nav class="teams" aria-label="צוותים">${S.restaurants.map(r => `<button class="team ${r.id===S.restaurant.id?"on":""}" aria-pressed="${r.id===S.restaurant.id}" onclick="switchRestaurant(${r.id})">${esc(r.name)}${(t => r.name.includes(t) ? "" : `<small>${t}</small>`)(r.staff_type==="floor"?"פלור":"מטבח")}</button>`).join("")}
+      <button class="team add" onclick="newRestaurantDialog()">+ צוות חדש</button></nav>
     <nav class="tabs" role="tablist">${tabs.map(([k,l]) => `<button role="tab" class="${TAB===k?"on":""}" aria-selected="${TAB===k}" onclick="setTab('${k}')">${l}</button>`).join("")}</nav>
     <main>${({schedule:scheduleView, stats:statsView, stations:stationsView, employees:employeesView, week:weekView, dates:datesView, restaurant:restaurantView}[TAB] || stationsView)()}</main>`;
   window.scrollTo(0, y);
@@ -352,16 +352,22 @@ function createFirst(){
   act(() => api("POST","/api/restaurants",{name:$("#sname").value, slot_minutes:+$("#sslot").value}), "המסעדה נוצרה");
 }
 function switchRestaurant(v){
-  if (v === "new"){ render(); newRestaurantDialog(); return; }
+  if (v === S.restaurant.id) return;
+  SCH = null; STATS = null;
   act(() => api("POST", `/api/restaurants/${v}/activate`));
 }
 function newRestaurantDialog(){
-  modal({title:"מסעדה חדשה", okText:"יצירה",
-    html:`<div class="field"><label>שם המסעדה</label><input type="text" id="nr-name"></div>
+  const floorNext = S.restaurant && S.restaurant.staff_type !== "floor";
+  modal({title:"צוות חדש", okText:"יצירה",
+    html:`<div class="field"><label>סוג צוות</label><select id="nr-type">${staffOptions(floorNext ? "floor" : "kitchen")}</select></div>
+          <div class="field"><label>שם (יופיע בלשונית למעלה)</label><input type="text" id="nr-name" value="${floorNext ? "פלור" : ""}" placeholder="לדוגמה: פלור, בר, מטבח"></div>
           <div class="field"><label>יחידת זמן לשיבוץ</label><select id="nr-slot">${slotOptions(30)}</select></div>
-          <div class="field"><label>סוג צוות</label><select id="nr-type">${staffOptions("kitchen")}</select></div>
-          <p class="hint">מסעדה חדשה מתחילה ריקה. כדי להתחיל מההגדרות של המסעדה הנוכחית, השתמש ב"שכפול" בלשונית "מסעדה".</p>`,
-    onOk: async () => { await api("POST","/api/restaurants",{name:$("#nr-name").value, slot_minutes:+$("#nr-slot").value, staff_type:$("#nr-type").value}); setTab("stations"); await load(); toast("המסעדה נוצרה"); }});
+          <p class="hint">לכל צוות יש עובדים, טמפלט וסידור משלו, ועוברים ביניהם בלשוניות שלמעלה. עובדים שכבר נמצאים בצוות אחר אפשר להעביר בכפתור "העברה לצוות אחר" בכרטיס העובד.</p>`,
+    onOk: async () => {
+      const type = $("#nr-type").value;
+      await api("POST","/api/restaurants",{name:$("#nr-name").value, slot_minutes:+$("#nr-slot").value, staff_type:type});
+      SCH = null; STATS = null; setTab(type === "floor" ? "week" : "stations"); await load(); toast("הצוות נוצר");
+    }});
 }
 
 /* ---------- day ticket ---------- */
@@ -748,6 +754,7 @@ function employeesView(){
         <label class="switch"><input type="checkbox" ${e.is_active?"checked":""} onchange="saveEmp(${e.id},{is_active:this.checked})"><span>${e.is_active?"פעיל":"לא פעיל"}</span></label>
         <button class="icon" aria-label="שינוי שם" onclick="renameEmp(${e.id})">✎</button>
         <button class="icon danger" aria-label="מחיקה" onclick="delEmp(${e.id})">✕</button></div>
+      ${S.restaurants.length > 1 ? `<button class="btn small" style="margin-bottom:6px" onclick="moveEmpDialog(${e.id})">העברה לצוות אחר</button>` : ""}
       <h4>עמדות</h4><div class="chips">${chips}</div>
       <h4>מתי יכול לעבוד</h4>
       <div class="avail">${days}</div>
@@ -780,6 +787,18 @@ function renameEmp(id){
   modal({title:"שינוי שם עובד", html:`<div class="field"><label>שם</label><input type="text" id="rn" value="${esc(e.name)}"></div>`,
     onOk: async () => { await api("PUT", `/api/employees/${id}`, {name:$("#rn").value}); await load(); }});
 }
+function moveEmpDialog(id){
+  const e = S.employees.find(x => x.id === id);
+  const others = S.restaurants.filter(r => r.id !== S.restaurant.id);
+  modal({title:`העברת ${e.name} לצוות אחר`, okText:"העברה",
+    html:`<div class="field"><label>לאיזה צוות</label><select id="mv-to">${others.map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join("")}</select></div>
+      <p class="hint">הזמינות עוברת איתו. העמדות לא עוברות (לכל צוות עמדות משלו), ומשמרות שכבר עבד כאן נשארות במעקב של הצוות הזה.</p>`,
+    onOk: async () => {
+      const to = +$("#mv-to").value;
+      await api("POST", `/api/employees/${id}/move`, {restaurant_id: to});
+      await load(); toast(`${e.name} הועבר ל${others.find(r => r.id === to).name}`);
+    }});
+}
 async function delEmp(id){
   const e = S.employees.find(x => x.id === id);
   if (!await confirmBox("מחיקת עובד", `למחוק את ${e.name} עם כל האילוצים שלו? אם הוא רק לא עובד כרגע, עדיף לסמן "לא פעיל".`)) return;
@@ -805,9 +824,9 @@ function restaurantView(){
       <div class="field"><label for="r-name">שם</label><input type="text" id="r-name" value="${esc(r.name)}"></div>
       <div class="field"><label for="r-slot">יחידת זמן לשיבוץ</label><select id="r-slot">${slotOptions(r.slot_minutes)}</select></div>
       <div class="field"><label for="r-close">זמן סגירה אחרי שעת הסגירה (דקות)</label><input type="number" id="r-close" min="0" max="240" value="${r.closing_minutes ?? 30}"></div>
-      <div class="field"><label for="r-type">סוג צוות</label><select id="r-type">${staffOptions(r.staff_type)}</select></div>
+      <div class="field"><label for="r-type">סוג הצוות הזה</label><select id="r-type">${staffOptions(r.staff_type)}</select></div>
     </div>
-    <p class="hint">מטבח: הסידור מאזן שעות בין העובדים על פני 4 שבועות. פלור: בלי איזון, כל עובד משובץ רק לפי מה שנתן, והמערכת בוחרת מבין הזמינים.</p>
+    <p class="hint"><b>לצוות נפרד (למשל פלור ליד המטבח) לוחצים "+ צוות חדש" למעלה</b>, ולא משנים כאן. השדה כאן משנה את הצוות הנוכחי עצמו. מטבח: הסידור מאזן שעות בין העובדים על פני 4 שבועות. פלור: בלי איזון, כל עובד משובץ רק לפי מה שנתן, והמערכת בוחרת מבין הזמינים.</p>
     <div class="row">
       <button class="btn primary" onclick="saveRestaurant()">שמירת פרטים</button>
     </div></div>
